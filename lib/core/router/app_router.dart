@@ -1,6 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../presentation/pages/home_page.dart';
+import '../../presentation/pages/memo_detail_page.dart';
 import '../../presentation/pages/memo_editor_page.dart';
 import '../../presentation/state/memo_provider.dart';
 
@@ -36,7 +38,8 @@ GoRouter router(RouterRef ref) {
       GoRoute(
         path: '/memo/:id',
         builder: (_, state) {
-          // Edit mode: look up the memo from provider state.
+          // Detail (read) mode: look up the memo and show MemoDetailPage.
+          // Editing navigates from MemoDetailPage → MemoEditorPage via FAB.
           final id = state.pathParameters['id']!;
           // memosProvider is an AsyncNotifier; read synchronously from cache.
           final memosAsync = ref.read(memosProvider);
@@ -44,7 +47,12 @@ GoRouter router(RouterRef ref) {
             (m) => m.id == id,
             orElse: () => throw StateError('Memo $id not found'),
           );
-          return MemoEditorPage(memo: memo);
+          if (memo == null) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return MemoDetailPage(memo: memo);
         },
       ),
     ],
