@@ -9,8 +9,9 @@
 ### 주요 특징
 
 - **CRUD 기능**: 메모 생성, 조회, 수정, 삭제
+- **실시간 검색**: 제목/내용 키워드 검색 — 대소문자 무시, 300ms 디바운스
 - **오프라인 지원**: Hive 로컬 저장소 - 항상 데이터에 접근 가능
-- **크로스 플랫폼**: iOS와 Android에서 동일하게 동작
+- **크로스 플랫폼**: iOS, Android, macOS에서 동일하게 동작
 - **깔끔한 UI**: 직관적인 인터페이스와 빠른 성능
 - **자동 정렬**: 최근 수정 순서로 자동 정렬
 
@@ -113,7 +114,8 @@ lib/
 │       ├── create_memo.dart
 │       ├── get_memos.dart
 │       ├── update_memo.dart
-│       └── delete_memo.dart
+│       ├── delete_memo.dart
+│       └── search_memos.dart     # 인메모리 키워드 필터링
 ├── data/                          # 데이터 계층 (Hive)
 │   ├── datasources/
 │   │   └── local/
@@ -143,13 +145,21 @@ test/
 
 ## SPEC 문서
 
-**SPEC-MEMO-001: 텍스트 메모 CRUD MVP**
+**SPEC-MEMO-001: 텍스트 메모 CRUD MVP** — ✅ 완료
 
 텍스트 메모의 기본 CRUD 기능을 정의합니다. 상세 내용은 `.moai/specs/SPEC-MEMO-001/spec.md`를 참조하세요.
 
 - 요구사항: 10개 (EARS 형식)
 - 구현 파일: 17개
-- 테스트: 9개 + 코드 생성 파일
+- 테스트: 57개
+
+**SPEC-SEARCH-001: 메모 검색 기능** — ✅ 완료
+
+제목/내용 키워드 기반 인메모리 검색 기능을 정의합니다. 상세 내용은 `.moai/specs/SPEC-SEARCH-001/spec.md`를 참조하세요.
+
+- 요구사항: 7개 (EARS 형식), 인수 기준 6개
+- 신규 파일: `SearchMemos` UseCase, 검색 Provider, 위젯 테스트
+- 테스트: 12개 신규 (T-001~T-012)
 
 ## 개발 가이드
 
@@ -190,4 +200,4 @@ MIT 라이선스
 
 ---
 
-**최근 업데이트**: 2026-06-25 (SPEC-MEMO-001 완료)
+**최근 업데이트**: 2026-06-25 (SPEC-SEARCH-001 완료 — 메모 검색 기능 추가)
