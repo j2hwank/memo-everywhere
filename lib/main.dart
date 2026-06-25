@@ -16,6 +16,9 @@ Future<void> main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(MemoModelAdapter());
   await Hive.openBox<MemoModel>(AppConstants.memosBoxName);
+  // @MX:NOTE: [AUTO] pending_ops box stores offline queue entries as Map.
+  // No custom adapter needed — Hive handles Map<String, dynamic> natively.
+  await Hive.openBox<Map>(AppConstants.pendingOpsBoxName);
 
   runApp(const ProviderScope(child: MemoApp()));
 }

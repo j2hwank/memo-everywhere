@@ -1,9 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/network/dio_config.dart';
 import '../../core/network/network_checker.dart';
 import '../../core/services/sync_service.dart';
+import '../../data/datasources/local/hive_pending_op_store.dart';
 import '../../data/datasources/local/memo_local_datasource.dart';
+import '../../data/datasources/local/pending_op_store.dart';
 import '../../data/datasources/remote/memo_remote_datasource.dart';
 import '../../data/datasources/remote/sync_store.dart';
 import '../../data/repositories/memo_repository_impl.dart';
@@ -47,6 +51,15 @@ final syncStoreProvider = Provider<SyncStore>((ref) {
   return const SecureStorageSyncStore();
 });
 
+// @MX:ANCHOR: [AUTO] pendingOpStoreProvider — durable offline queue singleton
+// @MX:REASON: Injected into syncServiceProvider; backed by a Hive box opened
+//             in main(); fan_in >= 2 (syncServiceProvider + tests).
+/// Provider for [PendingOpStore] (Hive-backed).
+final pendingOpStoreProvider = Provider<PendingOpStore>((ref) {
+  final box = Hive.box<Map>(AppConstants.pendingOpsBoxName);
+  return HivePendingOpStore(box);
+});
+
 /// Provider for [SyncMemos] use case.
 final syncMemosProvider = Provider<SyncMemos>((ref) {
   return SyncMemos(
@@ -66,6 +79,7 @@ final syncServiceProvider = Provider<SyncService>((ref) {
     networkChecker: ref.watch(networkCheckerProvider),
     remoteDataSource: ref.watch(memoRemoteDataSourceProvider),
     tokenStore: ref.watch(secureTokenStoreProvider),
+    pendingOpStore: ref.watch(pendingOpStoreProvider),
   );
 });
 

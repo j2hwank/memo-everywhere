@@ -10,6 +10,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:memo_everywhere/core/services/sync_service.dart';
+import 'package:memo_everywhere/data/datasources/local/pending_op_store.dart';
 import 'package:memo_everywhere/data/datasources/remote/memo_remote_datasource.dart';
 import 'package:memo_everywhere/data/models/memo_model.dart';
 import 'package:memo_everywhere/data/datasources/remote/backend_stt_service.dart';
@@ -74,6 +75,7 @@ void main() {
       networkChecker: mockNetwork,
       remoteDataSource: mockRemote,
       tokenStore: mockTokenStore,
+      pendingOpStore: InMemoryPendingOpStore(),
     );
   }
 
