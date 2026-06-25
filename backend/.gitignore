@@ -1,0 +1,16 @@
+# Environment / secrets — NEVER commit
+.env
+.env.*
+!.env.example
+
+# Local databases / test artifacts
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
