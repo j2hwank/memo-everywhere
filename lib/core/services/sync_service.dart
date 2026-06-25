@@ -56,6 +56,10 @@ class SyncService {
   final SecureTokenStore _tokenStore;
   final List<_PendingOp> _queue = [];
 
+  // @MX:NOTE: [AUTO] In-flight guard: prevents concurrent syncNow() calls from
+  // stacking up (e.g., 30-second poll fires during a slow network response).
+  bool _isSyncing = false;
+
   /// Number of operations queued for sync (for testing and UI badge).
   int get pendingQueueLength => _queue.length;
 
@@ -113,37 +117,47 @@ class SyncService {
 
   /// Replay queued operations then perform a pull sync.
   ///
-  /// No-op when not logged in or not online.
+  /// No-op when not logged in, not online, or a sync is already in progress.
+  /// The in-flight guard ensures the 30-second poll timer never triggers
+  /// concurrent backend requests during a slow network response.
   Future<void> syncNow() async {
-    if (!await _isLoggedIn()) return;
-    if (!await _networkChecker.isConnected()) return;
-
-    // Ensure lastSyncedAt is loaded from persistent store before first sync
-    await _syncMemos.initialize();
-
-    // Replay queued ops in FIFO order
-    final ops = List<_PendingOp>.from(_queue);
-    _queue.clear();
-
-    for (final op in ops) {
-      try {
-        switch (op) {
-          case _SaveOp(:final memo):
-            await _remoteDataSource.update(MemoModel.fromMemo(memo));
-          case _DeleteOp(:final id):
-            await _remoteDataSource.delete(id);
-        }
-      } catch (_) {
-        // Best-effort: if replay fails, the op is dropped (not re-queued).
-        // A subsequent full sync will reconcile any remaining divergence.
-      }
-    }
-
-    // Pull remote changes after pushing local ops
+    if (_isSyncing) return;
+    // Claim the lock synchronously before any await so concurrent callers
+    // that arrive while we are awaiting _isLoggedIn() or isConnected() still
+    // see _isSyncing == true and return early.
+    _isSyncing = true;
     try {
-      await _syncMemos.call();
-    } catch (_) {
-      // Best-effort pull — never throw to caller
+      if (!await _isLoggedIn()) return;
+      if (!await _networkChecker.isConnected()) return;
+      // Ensure lastSyncedAt is loaded from persistent store before first sync
+      await _syncMemos.initialize();
+
+      // Replay queued ops in FIFO order
+      final ops = List<_PendingOp>.from(_queue);
+      _queue.clear();
+
+      for (final op in ops) {
+        try {
+          switch (op) {
+            case _SaveOp(:final memo):
+              await _remoteDataSource.update(MemoModel.fromMemo(memo));
+            case _DeleteOp(:final id):
+              await _remoteDataSource.delete(id);
+          }
+        } catch (_) {
+          // Best-effort: if replay fails, the op is dropped (not re-queued).
+          // A subsequent full sync will reconcile any remaining divergence.
+        }
+      }
+
+      // Pull remote changes after pushing local ops
+      try {
+        await _syncMemos.call();
+      } catch (_) {
+        // Best-effort pull — never throw to caller
+      }
+    } finally {
+      _isSyncing = false;
     }
   }
 }

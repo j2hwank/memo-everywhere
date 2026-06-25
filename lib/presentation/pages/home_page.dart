@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/sync_poller.dart';
 import '../../domain/entities/memo.dart';
 import '../state/auth_provider.dart';
 import '../state/memo_provider.dart';
 import '../widgets/memo_card.dart';
 
 // @MX:NOTE: [AUTO] HomePage uses WidgetsBindingObserver to trigger syncNow
-// when the app resumes from background (REQ-B-009).
+// on resume (REQ-B-009) and SyncPoller for 30-second foreground polling.
 
 
 // ---------------------------------------------------------------------------
@@ -89,18 +90,38 @@ class _HomePageState extends ConsumerState<HomePage>
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
+  // @MX:WARN: [AUTO] SyncPoller holds a Timer.periodic that MUST be stopped
+  // when the app goes to background and disposed when the widget is removed.
+  // @MX:REASON: Failing to cancel allows syncNow() to fire on a dead ProviderRef,
+  // causing StateError("ProviderRef used after disposal") in release builds.
+  late final SyncPoller _syncPoller;
+
+  /// Polling interval for foreground cross-device sync.
+  ///
+  /// Change this constant to adjust the polling frequency.
+  /// A hot restart is sufficient — no cold restart needed.
+  static const _syncPollInterval = SyncPoller.defaultInterval;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    _syncPoller = SyncPoller(
+      interval: _syncPollInterval,
+      onTick: _triggerSync,
+    );
+
     // Trigger initial pull sync on app start (best-effort; no-op if logged out)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _triggerSync();
+      _syncPoller.start();
     });
   }
 
   @override
   void dispose() {
+    _syncPoller.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _debounce?.cancel();
@@ -109,8 +130,15 @@ class _HomePageState extends ConsumerState<HomePage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _triggerSync();
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _triggerSync();
+        _syncPoller.start();
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        _syncPoller.stop();
     }
   }
 
