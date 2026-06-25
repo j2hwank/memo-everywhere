@@ -175,4 +175,64 @@ void main() {
       expect(find.byKey(const Key('voice_error_message')), findsOneWidget);
     });
   });
+
+  group('VoiceRecordPage — start-failure shows custom message', () {
+    testWidgets(
+        'error state with message shows the custom message text', (tester) async {
+      final notifier = FakeVoiceNotifier();
+      await tester.pumpWidget(buildVoiceRecordPage(notifier: notifier));
+
+      const startFailMsg = '녹음을 시작할 수 없습니다. 마이크를 확인해 주세요.';
+      notifier.state =
+          const VoiceState.error(voiceUrl: '', message: startFailMsg);
+      await tester.pump();
+
+      // Custom message text must appear in the widget tree
+      expect(find.text(startFailMsg), findsOneWidget);
+    });
+
+    testWidgets(
+        'error state with message shows error icon', (tester) async {
+      final notifier = FakeVoiceNotifier();
+      await tester.pumpWidget(buildVoiceRecordPage(notifier: notifier));
+
+      notifier.state = const VoiceState.error(
+        voiceUrl: '',
+        message: '녹음을 시작할 수 없습니다. 마이크를 확인해 주세요.',
+      );
+      await tester.pump();
+
+      expect(find.byKey(const Key('voice_error_message')), findsOneWidget);
+    });
+
+    testWidgets(
+        'error state with message does NOT show the manual-edit button '
+        '(no audio to edit)', (tester) async {
+      final notifier = FakeVoiceNotifier();
+      await tester.pumpWidget(buildVoiceRecordPage(notifier: notifier));
+
+      notifier.state = const VoiceState.error(
+        voiceUrl: '',
+        message: '녹음을 시작할 수 없습니다. 마이크를 확인해 주세요.',
+      );
+      await tester.pump();
+
+      // The "직접 입력" button is only relevant when voiceUrl is non-empty
+      expect(find.text('직접 입력'), findsNothing);
+    });
+
+    testWidgets(
+        'transcription-failure error (voiceUrl set, no message) '
+        'still shows manual-edit button', (tester) async {
+      final notifier = FakeVoiceNotifier();
+      await tester.pumpWidget(buildVoiceRecordPage(notifier: notifier));
+
+      // Transcription-failure path: voiceUrl preserved, no message
+      notifier.state =
+          const VoiceState.error(voiceUrl: '/tmp/rec.m4a');
+      await tester.pump();
+
+      expect(find.text('직접 입력'), findsOneWidget);
+    });
+  });
 }

@@ -63,7 +63,8 @@ class VoiceRecordPage extends ConsumerWidget {
         ),
       VoiceTranscribing() => const _TranscribingView(),
       VoiceDone() => const SizedBox.shrink(), // listener handles navigation
-      VoiceError(:final voiceUrl) => _ErrorView(voiceUrl: voiceUrl),
+      VoiceError(:final voiceUrl, :final message) =>
+        _ErrorView(voiceUrl: voiceUrl, message: message),
     };
   }
 }
@@ -111,11 +112,32 @@ class _TranscribingView extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.voiceUrl});
+  const _ErrorView({required this.voiceUrl, this.message});
   final String voiceUrl;
+  // Non-null when recording could not START (no audio file to recover).
+  // Null when transcription failed after a successful recording (AC-8 path).
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
+    // Start-failure: show the custom guidance message, no manual-edit button
+    // (there is no audio file to edit).
+    if (message != null && message!.isNotEmpty) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.mic_off_rounded, size: 48, color: Colors.orange),
+          const SizedBox(height: 16),
+          Text(
+            key: const Key('voice_error_message'),
+            message!,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
+    }
+
+    // Transcription-failure (AC-8): audio preserved → offer manual editing.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

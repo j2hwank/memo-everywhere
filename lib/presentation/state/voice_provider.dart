@@ -30,7 +30,12 @@ sealed class VoiceState {
 
   const factory VoiceState.done({required String transcription}) = VoiceDone;
 
-  const factory VoiceState.error({required String voiceUrl}) = VoiceError;
+  // @MX:NOTE: [AUTO] message is null for transcription-failure (audio preserved);
+  // non-null for start-failure (no audio, user needs hardware guidance).
+  const factory VoiceState.error({
+    required String voiceUrl,
+    String? message,
+  }) = VoiceError;
 }
 
 class VoiceIdle extends VoiceState {
@@ -53,8 +58,11 @@ class VoiceDone extends VoiceState {
 }
 
 class VoiceError extends VoiceState {
-  const VoiceError({required this.voiceUrl});
+  const VoiceError({required this.voiceUrl, this.message});
   final String voiceUrl;
+  // Non-null when recording could not START (no audio file to recover).
+  // Null when transcription failed after a successful recording (audio preserved).
+  final String? message;
 }
 
 // ---------------------------------------------------------------------------
@@ -221,15 +229,33 @@ class VoiceStateNotifierImpl extends AutoDisposeNotifier<VoiceState>
     return const VoiceState.idle();
   }
 
+  // @MX:WARN: [AUTO] wraps hasPermission + start() in try/catch
+  // @MX:REASON: PlatformException from the native record layer must never
+  // propagate to the caller; on any failure the notifier transitions to
+  // VoiceError so the UI can guide the user.
   @override
   Future<void> startRecording() async {
-    final granted = await _recorderService.hasPermission();
-    if (!granted) {
-      state = const VoiceState.error(voiceUrl: '');
+    try {
+      final granted = await _recorderService.hasPermission();
+      if (!granted) {
+        state = const VoiceState.error(voiceUrl: '');
+        return;
+      }
+
+      await _recorderService.start();
+    } catch (_) {
+      // Recording could not start (no mic, device busy, permission denied at
+      // native layer, etc.). Cancel the elapsed timer if it was somehow
+      // started, then surface the error with a user-facing message.
+      _elapsedTimer?.cancel();
+      _elapsedTimer = null;
+      state = const VoiceState.error(
+        voiceUrl: '',
+        message: '녹음을 시작할 수 없습니다. 마이크를 확인해 주세요.',
+      );
       return;
     }
 
-    await _recorderService.start();
     _elapsed = Duration.zero;
     _startElapsedTimer();
     state = VoiceState.recording(elapsed: _elapsed, amplitude: 0.0);

@@ -188,4 +188,124 @@ void main() {
       expect(container.read(voiceStateNotifierProvider), isA<VoiceIdle>());
     });
   });
+
+  // -------------------------------------------------------------------------
+  // REQ-V-START-FAIL: start() throws → VoiceError (does NOT throw, no timer)
+  // -------------------------------------------------------------------------
+  group('VoiceStateNotifierImpl — start failure (PlatformException)', () {
+    test(
+        'startRecording transitions to VoiceError when start() throws '
+        'and does not rethrow to the caller', () async {
+      when(() => mockRecorder.hasPermission()).thenAnswer((_) async => true);
+      when(() => mockRecorder.start()).thenThrow(
+        Exception('Input device not found from available list.'),
+      );
+
+      final container = buildContainer(
+        recorder: mockRecorder,
+        transcriber: mockTranscriber,
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(voiceStateNotifierProvider.notifier);
+
+      // Must not throw — caller should never see the exception
+      await expectLater(notifier.startRecording(), completes);
+
+      final st = container.read(voiceStateNotifierProvider);
+      expect(st, isA<VoiceError>(),
+          reason: 'state should be VoiceError after start() throws');
+
+      // Start-failure error carries no audio file
+      expect((st as VoiceError).voiceUrl, isEmpty,
+          reason: 'no audio file was recorded');
+    });
+
+    test(
+        'startRecording with start() throw sets a non-null message '
+        'distinct from the transcription-failure default message', () async {
+      when(() => mockRecorder.hasPermission()).thenAnswer((_) async => true);
+      when(() => mockRecorder.start()).thenThrow(
+        Exception('Input device not found from available list.'),
+      );
+
+      final container = buildContainer(
+        recorder: mockRecorder,
+        transcriber: mockTranscriber,
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(voiceStateNotifierProvider.notifier);
+      await notifier.startRecording();
+
+      final st = container.read(voiceStateNotifierProvider) as VoiceError;
+      expect(st.message, isNotNull,
+          reason: 'start-failure must carry a descriptive message');
+      expect(st.message, isNotEmpty);
+    });
+
+    test('elapsed timer is NOT running after start() throws', () async {
+      when(() => mockRecorder.hasPermission()).thenAnswer((_) async => true);
+      when(() => mockRecorder.start()).thenThrow(
+        Exception('Input device not found from available list.'),
+      );
+
+      final container = buildContainer(
+        recorder: mockRecorder,
+        transcriber: mockTranscriber,
+      );
+      addTearDown(container.dispose);
+
+      // Keep a subscription alive so the AutoDisposeNotifier is not disposed
+      // during the delayed assertion below.
+      final sub = container.listen(
+        voiceStateNotifierProvider,
+        (_, __) {},
+        fireImmediately: true,
+      );
+      addTearDown(sub.close);
+
+      final notifier = container.read(voiceStateNotifierProvider.notifier);
+      await notifier.startRecording();
+
+      // Immediately after startRecording completes, the state must be
+      // VoiceError. If the elapsed timer were left running it would tick
+      // the state to VoiceRecording within 1 second.
+      expect(
+        container.read(voiceStateNotifierProvider),
+        isA<VoiceError>(),
+        reason: 'state must be VoiceError immediately after start() throws',
+      );
+
+      // Wait longer than one timer tick (1 s) to confirm the timer was never
+      // started — state must remain VoiceError, not transition to VoiceRecording.
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
+      expect(
+        container.read(voiceStateNotifierProvider),
+        isA<VoiceError>(),
+        reason: 'elapsed timer must not tick after start() throws',
+      );
+    });
+
+    test(
+        'permission denied → VoiceError.message is null '
+        '(existing behavior is unchanged)', () async {
+      when(() => mockRecorder.hasPermission()).thenAnswer((_) async => false);
+
+      final container = buildContainer(
+        recorder: mockRecorder,
+        transcriber: mockTranscriber,
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(voiceStateNotifierProvider.notifier);
+      await notifier.startRecording();
+
+      final st = container.read(voiceStateNotifierProvider) as VoiceError;
+      // Permission-denied path does not need a start-failure message.
+      // Accept either null or an empty string (implementation choice).
+      expect(st.message == null || st.message!.isEmpty, isTrue,
+          reason: 'permission-denied error should carry no start-failure message');
+    });
+  });
 }
