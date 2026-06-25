@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/memo.dart';
@@ -87,6 +89,14 @@ class _MemoEditorPageState extends ConsumerState<MemoEditorPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // @MX:NOTE: macOS Korean IME workaround — TextInputAction.next prematurely
+            // commits Hangul composition on macOS. Use newline on macOS to keep IME
+            // composing across jamo sequences (ㅎ→하→한). scribbleEnabled: false
+            // reduces interference from macOS Scribble/Handwriting input path.
+            // Root cause partially resides in FlutterTextInputPlugin.mm (engine-level);
+            // this app-level fix reduces visible cursor-jump symptoms.
+            // @MX:REASON: macOS SPM integration detected (XCLocalSwiftPackageReference),
+            // compounding text-input plugin interference during IME composition.
             TextField(
               controller: _titleController,
               decoration: const InputDecoration(
@@ -94,7 +104,12 @@ class _MemoEditorPageState extends ConsumerState<MemoEditorPage> {
                 border: InputBorder.none,
               ),
               style: Theme.of(context).textTheme.titleLarge,
-              textInputAction: TextInputAction.next,
+              // On macOS, TextInputAction.next commits Korean IME composition early.
+              textInputAction: Platform.isMacOS
+                  ? TextInputAction.newline
+                  : TextInputAction.next,
+              stylusHandwritingEnabled: !Platform.isMacOS,
+              enableIMEPersonalizedLearning: false,
             ),
             const Divider(),
             Expanded(
@@ -109,6 +124,8 @@ class _MemoEditorPageState extends ConsumerState<MemoEditorPage> {
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,
                 keyboardType: TextInputType.multiline,
+                stylusHandwritingEnabled: !Platform.isMacOS,
+                enableIMEPersonalizedLearning: false,
               ),
             ),
           ],
