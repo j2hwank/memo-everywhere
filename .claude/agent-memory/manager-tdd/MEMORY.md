@@ -1,0 +1,1 @@
+- [Project: SPEC-MEMO-001](project_spec_memo_001.md) — Flutter offline memo CRUD MVP, TDD implemented June 2026, Flutter SDK not installed on this machine
