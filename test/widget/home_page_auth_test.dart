@@ -11,6 +11,7 @@ import 'package:memo_everywhere/domain/entities/memo.dart';
 import 'package:memo_everywhere/presentation/pages/home_page.dart';
 import 'package:memo_everywhere/presentation/state/auth_provider.dart';
 import 'package:memo_everywhere/presentation/state/memo_provider.dart';
+import 'widget_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Fakes
@@ -62,6 +63,7 @@ class _FakeAuthNotifier extends Notifier<AuthState> implements AuthNotifier {
 Widget buildHomePage(AuthState authState) {
   return ProviderScope(
     overrides: [
+      ...syncProviderOverrides,
       memosProvider.overrideWith(() => _FakeMemosNotifier()),
       memoNotifierProvider.overrideWith(() => _FakeMemoNotifier()),
       authNotifierProvider.overrideWith(() => _FakeAuthNotifier(authState)),

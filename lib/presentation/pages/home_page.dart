@@ -8,6 +8,10 @@ import '../state/auth_provider.dart';
 import '../state/memo_provider.dart';
 import '../widgets/memo_card.dart';
 
+// @MX:NOTE: [AUTO] HomePage uses WidgetsBindingObserver to trigger syncNow
+// when the app resumes from background (REQ-B-009).
+
+
 // ---------------------------------------------------------------------------
 // Account icon button (AppBar action)
 // ---------------------------------------------------------------------------
@@ -79,16 +83,44 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Trigger initial pull sync on app start (best-effort; no-op if logged out)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerSync();
+    });
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _triggerSync();
+    }
+  }
+
+  Future<void> _triggerSync() async {
+    // Best-effort sync. SyncService.syncNow is a no-op when not logged in
+    // or offline, so this is safe to call unconditionally.
+    final syncService = ref.read(syncServiceProvider);
+    await syncService.syncNow();
+    // Refresh memo list so newly pulled memos appear immediately
+    ref.invalidate(memosProvider);
   }
 
   void _onSearchChanged(String query) {
@@ -138,6 +170,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final memosAsync = ref.watch(filteredMemosProvider);
+
+    // Listen for login transitions and trigger a full sync immediately
+    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      if (previous is! AuthLoggedIn && next is AuthLoggedIn) {
+        _triggerSync();
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(

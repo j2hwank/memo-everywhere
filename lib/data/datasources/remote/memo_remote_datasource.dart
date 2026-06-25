@@ -36,17 +36,25 @@ class MemoRemoteDataSourceImpl implements MemoRemoteDataSource {
 
   @override
   Future<List<MemoModel>> getSince(DateTime since) async {
+    // include_deleted=true ensures soft-deleted memos are returned so the
+    // sync layer can propagate deletions to local storage (REQ-B-006).
     final response = await _dio.get<dynamic>(
       '/memos',
-      queryParameters: <String, dynamic>{'since': since.toIso8601String()},
+      queryParameters: <String, dynamic>{
+        'since': since.toIso8601String(),
+        'include_deleted': true,
+      },
     );
     return _parseList((response.data as List<dynamic>?) ?? []);
   }
 
+  // @MX:NOTE: [AUTO] create and update both use PUT /memos/{id} (upsert).
+  // The backend treats PUT as idempotent: client supplies the canonical id,
+  // enabling offline-first creation without a server round-trip for id assignment.
   @override
   Future<void> create(MemoModel model) async {
-    await _dio.post<dynamic>(
-      '/memos',
+    await _dio.put<dynamic>(
+      '/memos/${model.id}',
       data: <String, dynamic>{
         'title': model.title,
         'content': model.content,
@@ -80,12 +88,14 @@ class MemoRemoteDataSourceImpl implements MemoRemoteDataSource {
   }
 
   MemoModel _fromJson(Map<String, dynamic> json) {
+    final deletedAtRaw = json['deleted_at'] as String?;
     return MemoModel(
       id: json['id'] as String,
       title: json['title'] as String?,
       content: (json['content'] as String?) ?? '',
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      deletedAt: deletedAtRaw != null ? DateTime.parse(deletedAtRaw) : null,
     );
   }
 }

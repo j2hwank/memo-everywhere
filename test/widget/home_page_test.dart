@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:memo_everywhere/domain/entities/memo.dart';
 import 'package:memo_everywhere/presentation/pages/home_page.dart';
 import 'package:memo_everywhere/presentation/state/memo_provider.dart';
+import 'widget_test_helpers.dart';
 
 class MockMemosNotifier extends AutoDisposeAsyncNotifier<List<Memo>>
     with Mock
@@ -19,6 +20,7 @@ class MockMemosNotifier extends AutoDisposeAsyncNotifier<List<Memo>>
 Widget buildHomePage(List<Memo> memos) {
   return ProviderScope(
     overrides: [
+      ...syncProviderOverrides,
       memosProvider.overrideWith(() => MockMemosNotifier(memos)),
       memoNotifierProvider.overrideWith(() => _NoOpMemoNotifier()),
     ],

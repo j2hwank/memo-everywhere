@@ -8,6 +8,7 @@ import 'package:memo_everywhere/domain/usecases/sync_memos.dart';
 
 class MockMemoRepository extends Mock implements MemoRepository {}
 class MockMemoRemoteDataSource extends Mock implements MemoRemoteDataSource {}
+class MockSyncStore extends Mock implements SyncStore {}
 
 void main() {
   late MockMemoRepository mockRepo;
@@ -31,13 +32,21 @@ void main() {
     ));
   });
 
+  late MockSyncStore mockStore;
+
   setUp(() {
     mockRepo = MockMemoRepository();
     mockRemote = MockMemoRemoteDataSource();
+    mockStore = MockSyncStore();
+
+    when(() => mockStore.readLastSyncedAt()).thenAnswer((_) async => null);
+    when(() => mockStore.writeLastSyncedAt(any())).thenAnswer((_) async {});
+
     // Provide a lastSyncedAt so tests use getSince() instead of getAll()
     useCase = SyncMemos(
       localRepo: mockRepo,
       remoteDatasource: mockRemote,
+      syncStore: mockStore,
       lastSyncedAt: DateTime.utc(2025, 1, 1),
     );
   });

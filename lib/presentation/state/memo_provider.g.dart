@@ -74,10 +74,10 @@ final memosProvider =
 );
 
 typedef _$Memos = AutoDisposeAsyncNotifier<List<Memo>>;
-String _$memoNotifierHash() => r'fbdfbb5e5346b65b40e85be815f3d692f2f73df3';
+String _$memoNotifierHash() => r'8dc1efaad08d421cd848ed2abc1c8a304f1fe907';
 
 /// Notifier that exposes CRUD actions; each action invalidates [memosProvider]
-/// so the list rebuilds automatically.
+/// so the list rebuilds automatically, and triggers SyncService for push sync.
 ///
 /// Copied from [MemoNotifier].
 @ProviderFor(MemoNotifier)

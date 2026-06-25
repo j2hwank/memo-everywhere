@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memo_everywhere/domain/entities/memo.dart';
 import 'package:memo_everywhere/presentation/pages/home_page.dart';
 import 'package:memo_everywhere/presentation/state/memo_provider.dart';
+import 'widget_test_helpers.dart';
 
 class _FakeMemosNotifier extends AutoDisposeAsyncNotifier<List<Memo>> implements Memos {
   final List<Memo> _memos;
@@ -32,6 +33,7 @@ final List<Memo> testMemos = [
 Widget buildHomePage(List<Memo> memos) {
   return ProviderScope(
     overrides: [
+      ...syncProviderOverrides,
       memosProvider.overrideWith(() => _FakeMemosNotifier(memos)),
       memoNotifierProvider.overrideWith(() => _NoOpMemoNotifier()),
     ],

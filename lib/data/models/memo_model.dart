@@ -15,6 +15,10 @@ class MemoModel extends HiveObject {
     required this.content,
     required this.createdAt,
     required this.updatedAt,
+    // @MX:NOTE: [AUTO] deletedAt is null for local/non-deleted memos.
+    // HiveField(5) — added after initial schema; old boxes read null for missing
+    // fields, so backward compatibility is preserved without migration.
+    this.deletedAt,
   });
 
   @HiveField(0)
@@ -31,6 +35,11 @@ class MemoModel extends HiveObject {
 
   @HiveField(4)
   DateTime updatedAt;
+
+  /// Soft-delete timestamp from the server. Null for active memos.
+  /// Not written by local CRUD — only populated during remote sync pull.
+  @HiveField(5)
+  DateTime? deletedAt;
 
   /// Creates a [MemoModel] from a domain [Memo] entity.
   factory MemoModel.fromMemo(Memo memo) {

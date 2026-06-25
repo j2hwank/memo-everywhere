@@ -47,8 +47,8 @@ void main() {
       expect(memos.first.id, equals('memo-1'));
     });
 
-    test('create sends POST /memos with memo data', () async {
-      // Arrange
+    test('create sends PUT /memos/{id} with client id (upsert)', () async {
+      // Arrange — create now uses PUT upsert (client-supplied id)
       final now = DateTime.utc(2026, 1, 1);
       final model = MemoModel(
         id: 'new-memo',
@@ -57,7 +57,7 @@ void main() {
         createdAt: now,
         updatedAt: now,
       );
-      when(() => mockDio.post<dynamic>(any(), data: any(named: 'data')))
+      when(() => mockDio.put<dynamic>(any(), data: any(named: 'data')))
           .thenAnswer((_) async => Response<dynamic>(
                 data: {
                   'id': 'new-memo',
@@ -71,13 +71,13 @@ void main() {
                   'version': 1,
                   'deleted_at': null,
                 },
-                statusCode: 201,
-                requestOptions: RequestOptions(path: '/memos'),
+                statusCode: 200,
+                requestOptions: RequestOptions(path: '/memos/new-memo'),
               ));
 
       // Act & Assert (no exception means success)
       await dataSource.create(model);
-      verify(() => mockDio.post<dynamic>(any(), data: any(named: 'data'))).called(1);
+      verify(() => mockDio.put<dynamic>('/memos/new-memo', data: any(named: 'data'))).called(1);
     });
 
     test('getSince fetches memos updated after given timestamp', () async {
