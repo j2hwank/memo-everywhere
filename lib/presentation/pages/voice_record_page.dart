@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../state/memo_provider.dart';
 import '../state/voice_provider.dart';
 import '../widgets/voice_recorder.dart';
 
@@ -9,24 +10,31 @@ import '../widgets/voice_recorder.dart';
 ///   idle        → record button visible
 ///   recording   → VoiceRecorder widget (duration + waveform + stop/cancel)
 ///   transcribing → loading spinner (AC-4)
-///   done        → navigates to MemoEditorPage with pre-filled content (AC-4)
+///   done        → creates memo with transcription, pops (AC-4)
 ///   error       → error message + manual-edit button (AC-8)
 //
 // @MX:NOTE: [AUTO] microphone permission is requested inside VoiceStateNotifier
 // before recording starts. On denial the notifier emits VoiceError so this
 // page can show guidance.
+// @MX:NOTE: [AUTO] AC-4 wiring: VoiceDone → MemoNotifier.create() → Navigator.pop()
+// so the home list refreshes automatically via memoNotifierProvider invalidation.
 class VoiceRecordPage extends ConsumerWidget {
   const VoiceRecordPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(voiceStateNotifierProvider);
-    final notifier = ref.read(voiceStateNotifierProvider.notifier) as VoiceStateNotifier;
+    final notifier =
+        ref.read(voiceStateNotifierProvider.notifier) as VoiceStateNotifier;
 
-    // When transcription completes, pop with the transcribed text.
-    ref.listen<VoiceState>(voiceStateNotifierProvider, (_, next) {
+    // AC-4: when transcription completes, create a memo and navigate back.
+    ref.listen<VoiceState>(voiceStateNotifierProvider, (_, next) async {
       if (next is VoiceDone && context.mounted) {
-        Navigator.of(context).pop(next.transcription);
+        final memoNotifier = ref.read(memoNotifierProvider.notifier);
+        await memoNotifier.create(content: next.transcription);
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
       }
     });
 

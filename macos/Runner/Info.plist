@@ -28,5 +28,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>음성 메모 녹음을 위해 마이크를 사용합니다</string>
 </dict>
 </plist>
