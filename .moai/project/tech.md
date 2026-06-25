@@ -321,6 +321,14 @@ GoRouter(
   - 토큰 만료 시 자동 리프레시 (토큰 refresh 엔드포인트 호출)
   - API 기본 URL: `--dart-define=API_BASE_URL=<host>:<port>` 주입
 
+- `lib/core/network/token_refresh_interceptor.dart`: 401 자동 갱신 인터셉터
+  - Access 토큰(24h) 만료 시 refresh 토큰으로 자동 재발급
+  - Single-flight (동시 401에도 refresh 1회 만 수행)
+  - Retry-once 플래그 (원요청 1회 재시도, 무한루프 방지)
+  - `/auth/refresh|login|register` 제외
+  - Refresh 실패 시 토큰 clear
+  - `SecureTokenStore.writeAccessToken` 지원 (refresh 토큰 보존하며 access만 갱신)
+
 - `lib/data/datasources/remote/backend_stt_service.dart`: Whisper API 프록시
   - 오디오 파일을 백엔드 `POST /voice/transcribe`로 전송
   - 변환 실패/오프라인 시 오디오 파일 보존 (에러 상태)
@@ -334,9 +342,17 @@ GoRouter(
   - Pull: `GET /memos?since=<timestamp>&include_deleted=true` (증분 동기, 소프트 삭제 포함)
   - Last-Write-Wins (LWW): 최신 updatedAt 기준 충돌 해결
 
-- `lib/data/datasources/remote/sync_store.dart`: 오프라인 큐 관리
+- `lib/data/datasources/local/pending_op_store.dart`: 오프라인 큐 인터페이스 + InMemory 구현
+  - 대기 작업의 인터페이스 정의
+  - 테스트용 메모리 구현
+
+- `lib/data/datasources/local/hive_pending_op_store.dart`: 영속 오프라인 큐 (Hive Box<Map>)
+  - 오프라인 대기 작업을 Hive에 영속화
+  - `AppConstants.pendingOpsBoxName = 'pending_ops'` (main.dart에서 박스 오픈)
+  - save/delete op를 Map 직렬화
   - FIFO 재생 (온라인 복귀 시 자동 전송)
-  - lastSyncedAt 영속화 (다음 폴링 때 증분 동기)
+  - 비로그인 시 아무것도 기록 안 함 (오프라인-우선 동작 유지)
+  - 앱 강제종료 후 재시작해도 대기 작업 유실 없음
 
 - `lib/core/services/sync_poller.dart`: 30초 주기 폴링
   - 포어그라운드에서만 동작 (백그라운드 진입 시 타이머 정지)
@@ -347,9 +363,15 @@ GoRouter(
   - Push: create/update → `PUT /memos/{id}`, delete → `DELETE`
   - Pull: `GET /memos?since=&include_deleted=true`
   - Last-Write-Wins (LWW) 충돌 해결
-  - 오프라인 큐 FIFO 재생
-- `lib/domain/usecases/sync_memos.dart`: 동기화 UseCase
+  - 영속 오프라인 큐 FIFO 재생
+
 - `lib/data/datasources/remote/memo_remote_datasource.dart`: API 통신
+
+**인증 토큰 정책**:
+- Access 토큰 (24h 만료) 사용 → 401 발생 시 TokenRefreshInterceptor가 자동 갱신
+- Refresh 토큰 (30d 만료) 안전한 저장소에 영속화 (SecureTokenStore)
+- 로그인 시 email도 함께 저장 (세션 복원 시 필요)
+- 로그아웃 시 토큰과 email 모두 clear
 
 ### 다국어 (i18n)
 

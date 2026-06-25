@@ -6,6 +6,43 @@ Format: [SPEC-ID] — Date — Description
 
 ---
 
+## [0.4.1] — 2026-06-26
+
+### Added (로그인 상태 복원)
+
+- **앱 재시작 시 자동 로그인**: secure storage의 토큰이 남아있으면 자동으로 로그인 상태 복원
+  - `SecureTokenStore`에 `writeEmail`/`readEmail` 추가 (login 시 email 영속화, clear 시 삭제)
+  - `AuthNotifier.restoreSession()` — 토큰+email 존재 시 AuthLoggedIn 복원 (네트워크 미접근, 비throw)
+  - `lib/main.dart`의 `MemoApp`을 ConsumerStatefulWidget으로 변환, 시작 시 1회 복원
+  - 재로그인 불필요
+
+### Added (영속 오프라인 큐)
+
+- **오프라인 대기 작업 영속화**: Hive에 영속화하여 앱 강제종료 후 재시작해도 유실 없음
+  - 신규: `lib/data/datasources/local/pending_op_store.dart` (인터페이스 + InMemory)
+  - 신규: `lib/data/datasources/local/hive_pending_op_store.dart` (Box<Map> 구현)
+  - `AppConstants.pendingOpsBoxName = 'pending_ops'` (main.dart에서 박스 오픈)
+  - `SyncService`가 큐를 PendingOpStore로 영속화 (save/delete op를 Map 직렬화)
+  - syncNow가 로드→FIFO 재생→클리어
+  - 비로그인 시 아무것도 기록 안 함 (오프라인-우선 동작 유지)
+
+### Added (자동 토큰 갱신)
+
+- **access 토큰(24h) 만료 시 자동 재발급**: 401 에러 발생 시 refresh 토큰으로 자동 재발급 후 원요청 1회 재시도
+  - 신규: `lib/core/network/token_refresh_interceptor.dart` (`TokenRefreshInterceptor`)
+  - `dio_config.dart`에 연결 + 인터셉터 없는 `_refreshDio`로 갱신 요청 격리
+  - Single-flight (동시 401에도 refresh 1회)
+  - Retry-once 플래그 (무한루프 방지)
+  - `/auth/refresh|login|register` 제외
+  - Refresh 실패 시 토큰 clear
+  - `SecureTokenStore.writeAccessToken` 추가 (refresh 토큰 보존하며 access만 갱신)
+
+### Tests
+
+- **Flutter**: 222개 통과 (로그인 상태 복원 + 영속 오프라인 큐 + 토큰 갱신 포함)
+
+---
+
 ## [0.4.0] — 2026-06-26
 
 ### Added (음성 메모 실구현: 레코딩 + 클라우드 STT)

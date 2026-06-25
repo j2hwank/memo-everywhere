@@ -23,6 +23,7 @@ memo-everywhere/
 │   │   ├── extensions/           # Dart 확장 메서드
 │   │   ├── network/              # 네트워크 설정
 │   │   │   ├── dio_config.dart   # Dio + JWT 인터셉터
+│   │   │   ├── token_refresh_interceptor.dart  # 401 자동 갱신
 │   │   │   └── network_checker.dart  # 온/오프라인 감지
 │   │   ├── services/             # 애플리케이션 서비스
 │   │   │   ├── sync_service.dart      # 양방향 동기화
@@ -32,7 +33,9 @@ memo-everywhere/
 │   ├── data/                     # 데이터 계층 (API, 로컬 DB, 모델)
 │   │   ├── datasources/          # 데이터 소스
 │   │   │   ├── local/            # Hive/Isar 로컬 데이터베이스
-│   │   │   │   └── audio_local_datasource.dart  # 오디오 파일 관리
+│   │   │   │   ├── audio_local_datasource.dart  # 오디오 파일 관리
+│   │   │   │   ├── pending_op_store.dart        # 오프라인 큐 인터페이스
+│   │   │   │   └── hive_pending_op_store.dart   # 영속 오프라인 큐 (Hive Box)
 │   │   │   ├── remote/           # REST API 클라이언트
 │   │   │   │   ├── auth_remote_datasource.dart  # JWT 로그인/회원가입/리프레시
 │   │   │   │   ├── memo_remote_datasource.dart  # 메모 CRUD + 양방향 동기화
@@ -100,6 +103,11 @@ memo-everywhere/
 ├── analysis_options.yaml         # Lint 규칙 설정
 ├── .env.example                  # 환경 변수 템플릿
 └── README.md                     # 프로젝트 README
+
+**Hive 박스**:
+- `memos`: 메모 목록 (Memo 엔티티)
+- `pending_ops`: 영속 오프라인 큐 (Map 직렬화)
+- `AppConstants.pendingOpsBoxName` 상수로 main.dart에서 박스 오픈
 ```
 
 ---
