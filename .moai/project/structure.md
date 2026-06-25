@@ -21,6 +21,12 @@ memo-everywhere/
 │   ├── core/                     # 핵심 기능 (유틸리티, 상수, 헬퍼)
 │   │   ├── constants/            # 애플리케이션 상수
 │   │   ├── extensions/           # Dart 확장 메서드
+│   │   ├── network/              # 네트워크 설정
+│   │   │   ├── dio_config.dart   # Dio + JWT 인터셉터
+│   │   │   └── network_checker.dart  # 온/오프라인 감지
+│   │   ├── services/             # 애플리케이션 서비스
+│   │   │   ├── sync_service.dart      # 양방향 동기화
+│   │   │   └── sync_poller.dart       # 30초 폴링
 │   │   ├── utils/                # 유틸리티 함수 (포맷팅, 검증 등)
 │   │   └── theme/                # 테마 및 스타일 (색상, 폰트 등)
 │   ├── data/                     # 데이터 계층 (API, 로컬 DB, 모델)
@@ -28,11 +34,13 @@ memo-everywhere/
 │   │   │   ├── local/            # Hive/Isar 로컬 데이터베이스
 │   │   │   │   └── audio_local_datasource.dart  # 오디오 파일 관리
 │   │   │   ├── remote/           # REST API 클라이언트
-│   │   │   │   ├── auth_remote_datasource.dart  # JWT 로그인/회원가입
-│   │   │   │   └── memo_remote_datasource.dart  # 메모 CRUD API
+│   │   │   │   ├── auth_remote_datasource.dart  # JWT 로그인/회원가입/리프레시
+│   │   │   │   ├── memo_remote_datasource.dart  # 메모 CRUD + 양방향 동기화
+│   │   │   │   ├── backend_stt_service.dart # Whisper API 프록시
+│   │   │   │   └── sync_store.dart         # 오프라인 큐 관리
 │   │   │   └── cache/            # 캐시 관리
 │   │   ├── models/               # JSON 직렬화 모델
-│   │   │   ├── memo_model.dart
+│   │   │   ├── memo_model.dart   # (HiveField 5: deletedAt 추가)
 │   │   │   ├── tag_model.dart
 │   │   │   └── user_model.dart
 │   │   └── repositories/         # 저장소 (데이터 계층 추상화)
@@ -49,10 +57,11 @@ memo-everywhere/
 │   │       ├── create_memo.dart
 │   │       ├── search_memos.dart
 │   │       ├── record_voice.dart
-│   │       └── sync_memos.dart
+│   │       ├── sync_memos.dart   # 양방향 동기화 (push + pull)
 │   ├── presentation/             # 프레젠테이션 계층 (UI)
 │   │   ├── pages/                # 완전한 화면 (페이지)
 │   │   │   ├── home_page.dart
+│   │   │   ├── auth_screen.dart        # 로그인/회원가입 (선택적)
 │   │   │   ├── memo_editor_page.dart    # 순수 텍스트 작성/편집
 │   │   │   ├── search_page.dart
 │   │   │   ├── voice_record_page.dart   # 음성 녹음 UI
@@ -67,19 +76,10 @@ memo-everywhere/
 │   │   │   ├── tag_provider.dart
 │   │   │   ├── search_provider.dart
 │   │   │   ├── voice_provider.dart      # 음성 녹음 상태
-│   │   │   └── auth_provider.dart       # JWT 토큰 관리
+│   │   │   ├── auth_provider.dart       # JWT 토큰 + 로그인 상태
+│   │   │   └── sync_provider.dart       # 동기화 상태 (30초 폴링)
 │   │   └── bloc/                 # BLoC 상태 관리 (선택적)
 │   │       └── memo_bloc/
-│   ├── core/                     # 핵심 기능 (유틸리티, 상수, 헬퍼)
-│   │   ├── constants/
-│   │   ├── extensions/
-│   │   ├── utils/
-│   │   │   └── platform_utils.dart    # 플랫폼 감지 (Web/Mobile/Desktop)
-│   │   ├── services/
-│   │   │   └── sync_service.dart      # 자동 동기화 서비스
-│   │   ├── theme/                # 테마 및 스타일
-│   │   └── router/
-│   │       └── app_router.dart       # go_router 설정 + /memo/:id 라우트
 │   └── shared/                   # 공유 리소스
 │       ├── config/               # 앱 설정 (API 기본 URL, 환경)
 │       └── services/             # 공유 서비스 (로깅, 분석)
@@ -111,33 +111,46 @@ backend/                          # FastAPI 백엔드 서버
 ├── app/
 │   ├── main.py                   # FastAPI 진입점
 │   ├── core/
-│   │   ├── config.py             # 환경 설정
-│   │   ├── auth.py               # JWT 인증 로직
+│   │   ├── config.py             # 환경 설정 (DB, JWT, OpenAI)
+│   │   ├── auth.py               # JWT 인증 로직 (encode/decode)
 │   │   └── db.py                 # 데이터베이스 연결
 │   ├── api/
 │   │   ├── routes/
-│   │   │   ├── auth.py           # 인증 엔드포인트 (login, register)
-│   │   │   ├── memos.py          # 메모 CRUD 엔드포인트
-│   │   │   └── voice.py          # 음성 처리 (Whisper API 프록시)
+│   │   │   ├── auth.py           # 인증 엔드포인트 (register, login, refresh)
+│   │   │   ├── memos.py          # 메모 CRUD + 동기화 엔드포인트
+│   │   │   │                     #  GET /memos (with ?since=&include_deleted)
+│   │   │   │                     #  PUT /memos/{id} (upsert by client uuid)
+│   │   │   │                     #  DELETE /memos/{id} (soft delete)
+│   │   │   └── voice.py          # 음성 처리 (POST /voice/transcribe)
 │   ├── models/                   # SQLAlchemy ORM 모델
-│   │   ├── memo.py
+│   │   ├── memo.py               # (fields: id, user_id, title, content, deletedAt...)
 │   │   └── user.py
 │   ├── schemas/                  # Pydantic 스키마 (요청/응답)
 │   │   ├── memo.py
 │   │   ├── user.py
 │   │   └── auth.py
 │   └── services/                 # 비즈니스 로직
-│       ├── auth_service.py       # JWT, bcrypt
-│       ├── memo_service.py       # 메모 CRUD + 동기화 로직
-│       └── voice_service.py      # Whisper API 호출
+│       ├── auth_service.py       # JWT (encode/decode), bcrypt 비밀번호
+│       ├── memo_service.py       # 메모 CRUD + LWW 동기화 + 증분 폴링
+│       └── voice_service.py      # OpenAI Whisper API 호출
 ├── alembic/                      # 데이터베이스 마이그레이션
 │   ├── versions/                 # 마이그레이션 파일
 │   └── env.py
 ├── tests/
-│   └── test_api.py               # API 엔드포인트 테스트
+│   └── test_api.py               # API 엔드포인트 테스트 (26개)
 ├── requirements.txt              # Python 의존성
+├── .env                          # 환경 변수 (gitignore 보호)
+│                                 #  OPENAI_API_KEY, JWT_SECRET
 ├── .env.example                  # 환경 변수 템플릿
+├── .gitignore                    # .env, *.db, venv/, __pycache__ 보호
 └── alembic.ini                   # Alembic 설정
+```
+
+**macOS 빌드 설정**:
+```
+macos/Runner/Configs/
+├── Signing.xcconfig              # (gitignore) DEVELOPMENT_TEAM = <Apple Team ID>
+└── ...
 ```
 
 ---

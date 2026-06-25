@@ -301,23 +301,55 @@ GoRouter(
 
 | 패키지 | 목적 | 버전 |
 |--------|------|------|
-| `record` | 오디오 녹음 (플랫폼 네이티브 코덱) | 7.0.0+ |
-| `speech_to_text` | 음성-텍스트 변환 (네이티브 STT) | 7.0.0+ |
+| `record` | 오디오 녹음 (플랫폼별 코덱: iOS AAC, Android MP4, Web WAV) | 7.0.0+ |
+| `speech_to_text` | 음성-텍스트 변환 (네이티브 STT: ko-KR, en-US) | 7.0.0+ |
+| `path_provider` | 오디오 파일 경로 관리 | 2.0.0+ |
 
 ### 네트워크 및 인증 #package/network
 
 | 패키지 | 목적 | 버전 |
 |--------|------|------|
-| `dio` | HTTP 클라이언트 (권장) | 5.3.0+ |
-| `flutter_secure_storage` | 안전한 토큰 저장 (KeyChain/Keystore) | 9.0.0+ |
+| `dio` | HTTP 클라이언트 + JWT 인터셉터 | 5.3.0+ |
+| `flutter_secure_storage` | 안전한 토큰 저장 (Keychain/Keystore) | 9.0.0+ |
 | `connectivity_plus` | 네트워크 상태 감지 | 5.0.0+ |
-| `http` | 표준 HTTP 라이브러리 | 1.1.0+ |
 
-```dart
-// dio 사용
-final dio = Dio();
-final response = await dio.get('https://api.example.com/memos');
-```
+### 네트워크 계층 아키텍처
+
+**구현 파일**:
+- `lib/core/network/dio_config.dart`: Dio + JWT 인터셉터
+  - Authorization 헤더 자동 추가
+  - 토큰 만료 시 자동 리프레시 (토큰 refresh 엔드포인트 호출)
+  - API 기본 URL: `--dart-define=API_BASE_URL=<host>:<port>` 주입
+
+- `lib/data/datasources/remote/backend_stt_service.dart`: Whisper API 프록시
+  - 오디오 파일을 백엔드 `POST /voice/transcribe`로 전송
+  - 변환 실패/오프라인 시 오디오 파일 보존 (에러 상태)
+
+- `lib/core/network/network_checker.dart`: 온/오프라인 감지
+  - connectivity_plus 래핑
+
+**동기화 계층 아키텍처**:
+- `lib/core/services/sync_service.dart`: 양방향 동기화 조율
+  - Push: 로컬 변경 → `PUT /memos/{id}` (클라이언트 uuid upsert), `DELETE /memos/{id}`
+  - Pull: `GET /memos?since=<timestamp>&include_deleted=true` (증분 동기, 소프트 삭제 포함)
+  - Last-Write-Wins (LWW): 최신 updatedAt 기준 충돌 해결
+
+- `lib/data/datasources/remote/sync_store.dart`: 오프라인 큐 관리
+  - FIFO 재생 (온라인 복귀 시 자동 전송)
+  - lastSyncedAt 영속화 (다음 폴링 때 증분 동기)
+
+- `lib/core/services/sync_poller.dart`: 30초 주기 폴링
+  - 포어그라운드에서만 동작 (백그라운드 진입 시 타이머 정지)
+  - 동시 sync 방지 가드
+  - 기본 주기: 30초 (SyncPoller.defaultInterval 상수)
+
+- `lib/domain/usecases/sync_memos.dart`: 동기화 비즈니스 로직
+  - Push: create/update → `PUT /memos/{id}`, delete → `DELETE`
+  - Pull: `GET /memos?since=&include_deleted=true`
+  - Last-Write-Wins (LWW) 충돌 해결
+  - 오프라인 큐 FIFO 재생
+- `lib/domain/usecases/sync_memos.dart`: 동기화 UseCase
+- `lib/data/datasources/remote/memo_remote_datasource.dart`: API 통신
 
 ### 다국어 (i18n)
 
@@ -364,10 +396,38 @@ FastAPI==0.104.0           # 웹 프레임워크
 sqlalchemy==2.0.0          # ORM
 alembic==1.13.0            # DB 마이그레이션
 pydantic==2.0.0            # 검증
-python-jose==3.3.0         # JWT 토큰
-openai==1.0.0              # Whisper API
-python-dotenv==1.0.0       # 환경 변수
+python-jose==3.3.0         # JWT 토큰 (24h access, 30d refresh)
+bcrypt==4.0.0              # 비밀번호 암호화
+openai==1.0.0              # Whisper API (클라우드 STT)
+python-dotenv==1.0.0       # 환경 변수 (.env 관리)
 ```
+
+### REST API 엔드포인트 계약
+
+**인증 (Authentication)**:
+- `POST /auth/register` — 회원가입 (email, password)
+- `POST /auth/login` — 로그인 (email, password → access_token, refresh_token)
+- `POST /auth/refresh` — 토큰 리프레시 (refresh_token → access_token)
+
+**메모 CRUD (Memos)**:
+- `GET /memos` — 메모 목록 조회
+  - Query: `?since=<ISO8601>&include_deleted=true` (증분 동기, 소프트 삭제 포함)
+  - 응답: `[{ id, title, content, createdAt, updatedAt, deletedAt, ... }]`
+
+- `PUT /memos/{id}` — 메모 생성/수정 (클라이언트 uuid 기반 upsert)
+  - 요청: `{ id(uuid), title?, content, createdAt, updatedAt, ... }`
+  - 동작: 서버는 `id`로 조회 후 없으면 INSERT, 있으면 LWW 기반 UPDATE
+  - 행 격리 유지 (충돌 없음)
+
+- `DELETE /memos/{id}` — 메모 삭제 (soft delete)
+  - 동작: `deletedAt` 타임스탬프 기록 (물리 삭제 아님)
+  - `include_deleted=false` 시 제외 (기본값)
+
+**음성 처리 (Voice)**:
+- `POST /voice/transcribe` — 음성 파일 → Whisper API → 텍스트 변환
+  - 요청: multipart/form-data (`audio` 파일, `language`=ko/en)
+  - 응답: `{ "text": "변환된 텍스트", "language": "ko" }`
+  - 실패: 오디오 파일은 클라이언트에서 보존, 재시도 또는 로컬 STT 폴백
 
 ### 데이터베이스: PostgreSQL #database/postgres
 

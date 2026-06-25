@@ -6,6 +6,72 @@ Format: [SPEC-ID] — Date — Description
 
 ---
 
+## [0.4.0] — 2026-06-26
+
+### Added (음성 메모 실구현: 레코딩 + 클라우드 STT)
+
+- **음성 메모 제전 동작**: `record` 패키지로 플랫폼별 오디오 녹음 (AAC/MP4/WAV)
+  - `lib/core/network/dio_config.dart`: Dio HTTP 클라이언트 + JWT 인터셉터 설정
+  - `lib/data/datasources/remote/backend_stt_service.dart`: OpenAI Whisper API 프록시
+  - 변환 실패/오프라인 시 오디오 파일 보존 (에러 상태로 표시)
+  - 실기기(안드로이드) 검증 완료
+- **패키지 추가**: `path_provider` (오디오 파일 경로 관리)
+- **권한**: Android `RECORD_AUDIO`/`INTERNET`, macOS 마이크 사용 권한 설명
+
+### Added (선택적 로그인/계정 — 온/오프라인 이중 모드)
+
+- **앱은 로그인 없이 완전 동작**: 모든 메모 기능이 로컬로만 작동 (오프라인 우선)
+- **로그인 활성화**: 로그인 시에만 동기화 및 음성변환(Whisper) 활성화
+- **신규 UI**: `lib/presentation/pages/auth_screen.dart` (로그인/회원가입 토글)
+- **신규 상태**: `lib/presentation/state/auth_provider.dart` (AuthState/AuthNotifier)
+- **홈 AppBar 계정 아이콘** + `/account` 라우트
+- **토큰 관리 확장**: `SecureTokenStore`에 write/clear/refresh 메서드 추가
+- **백엔드 계약**: `POST /auth/register|login|refresh` 엔드포인트
+
+### Added (양방향 메모 동기화 — LWW + 폴링)
+
+- **Push 동기화**: 메모 create/update → `PUT /memos/{id}` (클라이언트 uuid upsert), delete → `DELETE` (soft delete)
+- **Pull 동기화**: `GET /memos?since=&include_deleted=true` (증분 동기, 소프트 삭제 포함)
+- **Last-Write-Wins (LWW)**: 최신 수정시간 기준 충돌 해결
+- **오프라인 큐**: FIFO 재생 동기화, 네트워크 복귀 시 자동 전송
+- **신규 파일**: 
+  - `lib/core/network/network_checker.dart` (온/오프라인 감지)
+  - `lib/data/datasources/remote/sync_store.dart` (동기화 상태 관리)
+  - 완성: `lib/core/services/sync_service.dart`, `lib/domain/usecases/sync_memos.dart`, `lib/data/datasources/remote/memo_remote_datasource.dart`
+- **데이터 모델 확장**: `MemoModel.deletedAt` (HiveField 5, 소프트 삭제 표시)
+- **백엔드 변경**: `PUT /memos/{id}`를 클라이언트 uuid 기반 upsert로 개선 (행 격리, LWW 유지)
+- **lastSyncedAt 영속화**: 다음 폴링 때 증분 동기 지원
+
+### Added (30초 주기 포어그라운드 폴링)
+
+- **자동 pull 동기화**: 앱 켜져있고 로그인 상태 → 30초마다 자동 폴링
+- **포어그라운드만 폴링**: 앱 백그라운드 진입 시 폴링 타이머 정지
+- **신규 서비스**: `lib/core/services/sync_poller.dart` (타이머 관리, 동시 sync 방지)
+- **주기 조절**: `SyncPoller.defaultInterval` 상수로 간편 설정
+
+### Added (백엔드 보안 & 설정 개선)
+
+- **`.gitignore` 강화**: `.env`, `*.db`, `venv/`, `__pycache__/` 보호
+  - `.env` 절대 커밋 금지 (OPENAI_API_KEY, JWT_SECRET 보호)
+- **로컬 개발 DB**: SQLite 기본값 (Docker/프로덕션은 PostgreSQL)
+
+### Added (macOS 지원 완성)
+
+- **Entitlements 추가**: 
+  - 네트워크 클라이언트: `com.apple.security.network.client`
+  - Keychain 접근: `keychain-access-groups` (flutter_secure_storage 지원)
+- **서명 설정**: `CODE_SIGN_IDENTITY = Apple Development`
+  - **주의**: 개발자 팀 ID는 `macos/Runner/Configs/Signing.xcconfig`에서 로컬 주입 (gitignore)
+  - 실제 Keychain entitlements는 유효한 인증서 서명 필요
+- **결과**: macOS 11.0 이상에서 안전하게 실행
+
+### Tests
+
+- **Flutter**: 186개 통과 (음성 + 동기화 + 인증 포함)
+- **Backend (pytest)**: 26개 통과 (Whisper, upsert, 폴링 포함)
+
+---
+
 ## [0.3.0] — 2026-06-25
 
 ### Added (SPEC-BACKEND-001: FastAPI 백엔드 + 크로스디바이스 동기화)

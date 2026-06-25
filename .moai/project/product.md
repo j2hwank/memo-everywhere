@@ -12,7 +12,7 @@ aliases: [제품정의, 기능명세, 제품요구사항]
 
 **프로젝트명**: memo-everywhere
 
-**한 줄 설명**: 모든 플랫폼에서 음성 지원이 되는 크로스플랫폼 메모 애플리케이션
+**한 줄 설명**: 모든 플랫폼에서 음성 입력, 자동 STT, 선택적 로그인, 양방향 동기화를 지원하는 크로스플랫폼 메모 애플리케이션
 
 **관련 문서**: [[index]] | [[tech]] | [[structure]]
 
@@ -39,34 +39,45 @@ aliases: [제품정의, 기능명세, 제품요구사항]
 - 순수 텍스트 편집 (마크다운 렌더링 미지원)
 - 온라인/오프라인 동작
 
-### 2. 음성 기록 및 STT #feature/voice
-- 음성 녹음 후 자동 텍스트 변환
-- Whisper API (클라우드) 또는 디바이스 네이티브 STT
-- 다국어 지원 (한국어, 영어 최우선)
+### 2. 음성 기록 및 STT #feature/voice ✅
+- 음성 녹음 후 자동 텍스트 변환 — **실제 구현 완료**
+- 디바이스 네이티브 STT (ko-KR, en-US) + Whisper API 클라우드 STT
+- 플랫폼별 코덱: iOS/macOS AAC, Android MP4, Web WAV
+- 변환 실패 시 오디오 파일 보존 (에러 상태)
+- 실기기(안드로이드) 검증 완료
 - 관련: [[voice-processing]]
 
-### 3. 태그/폴더 조직화 #feature/organization
+### 3. 선택적 로그인 및 계정 #feature/auth ✅
+- **앱은 로그인 없이도 완전히 동작**: 로컬 메모, 로컬 STT
+- **로그인 후 활성화**: 클라우드 동기화 + Whisper STT
+- JWT 기반 인증 (24h 엑세스, 30d 리프레시)
+- 홈 AppBar 계정 아이콘 → 로그인/회원가입
+
+### 4. 양방향 클라우드 동기화 #feature/sync ✅
+- **30초 주기 자동 폴링** (포어그라운드 시에만)
+- Last-Write-Wins (LWW) 충돌 해결
+- 오프라인 큐 FIFO 재생 (온라인 복귀 시 자동 전송)
+- 증분 동기 지원 (since 쿼리 + include_deleted)
+- 소프트 삭제 지원
+- 로그인 필수
+- 관련: [[sync-strategy]]
+
+### 5. 풍rich 한 검색 기능 #feature/search ✅
+- **실제 구현 완료**: 제목/내용 키워드 전문 검색
+- 대소문자 무시, 300ms 디바운스
+- 음성 메모 전사본 검색 가능
+
+### 6. 크로스플랫폼 지원 #feature/platform ✅
+- **iOS**, **Android**, **macOS** ✅, **Web** ✅
+- 플랫폼별 네이티브 권한 (마이크, Keychain)
+- 반응형 레이아웃
+- 관련: [[tech]]
+
+### 7. 태그/폴더 조직화 #feature/organization (향후)
 - 메모를 체계적으로 분류하고 관리
 - 계층적 폴더 구조
 - 복수 태그 지원
 - 즐겨찾기 폴더
-
-### 4. 풍rich 한 검색 기능 #feature/search
-- 텍스트 기반 전문 검색
-- 태그 기반 필터링
-- 날짜 범위 검색
-- 음성 메모 전사본 검색
-
-### 5. 클라우드 동기화 #feature/sync
-- 모든 디바이스 간 실시간 메모 동기화
-- 충돌 해결 (Last-Write-Wins)
-- 오프라인 지원 (온라인 복귀 시 동기)
-- 관련: [[sync-strategy]]
-
-### 6. 크로스플랫폼 지원 #feature/platform
-- iOS, Android, macOS, Windows, Linux, Web 동시 지원
-- 플랫폼별 네이티브 UI/UX
-- 관련: [[tech]]
 
 ---
 
@@ -150,18 +161,20 @@ aliases: [제품정의, 기능명세, 제품요구사항]
 
 ## 로드맵 (Roadmap)
 
-### Phase 1: MVP (V1.0)
+### Phase 1: MVP (V1.0 — 완료)
 - [x] 텍스트 메모 CRUD
-- [x] 음성 녹음 + STT
-- [ ] 태그 조직화
+- [x] 음성 녹음 + STT (네이티브)
 - [x] 기본 검색
 - [x] iOS/Android 지원
-
-### Phase 2: 확장 (V1.1)
-- [ ] macOS/Windows/Linux 지원 (macOS 지원됨, Windows/Linux 부분 지원)
 - [x] Web 지원
-- [ ] 폴더 계층 구조
-- [x] 클라우드 동기화
+
+### Phase 2: 확장 (V1.1 — 진행 중)
+- [x] 클라우드 동기화 (양방향, 30초 폴링)
+- [x] 선택적 로그인 (앱은 로그인 없이 완전히 동작)
+- [x] macOS 지원 (Keychain entitlements)
+- [x] Whisper API 클라우드 STT
+- [ ] 태그/폴더 조직화 (향후)
+- [ ] Windows/Linux 지원
 
 ### Phase 3: 고도화 (V2.0)
 - [ ] 폴더 공유 (협업)
