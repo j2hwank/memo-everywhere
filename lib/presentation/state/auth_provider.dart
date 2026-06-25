@@ -72,6 +72,27 @@ class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() => const AuthLoggedOut();
 
+  /// Restores a previously authenticated session from secure storage.
+  ///
+  /// Reads the stored access token and email; if both are present, transitions
+  /// to [AuthLoggedIn]. Otherwise leaves state as [AuthLoggedOut].
+  ///
+  // @MX:NOTE: [AUTO] restoreSession — network-free, best-effort startup restore.
+  // Does NOT validate token expiry; expired tokens are handled by the
+  // auto-refresh interceptor on first network request.
+  Future<void> restoreSession() async {
+    try {
+      final tokenStore = ref.read(secureTokenStoreProvider);
+      final token = await tokenStore.readAccessToken();
+      final email = await tokenStore.readEmail();
+      if (token != null && email != null) {
+        state = AuthLoggedIn(email: email);
+      }
+    } catch (_) {
+      // Best-effort: any storage failure leaves state as AuthLoggedOut.
+    }
+  }
+
   /// Attempts to log in. On success persists tokens and transitions to
   /// [AuthLoggedIn]. On failure transitions to [AuthError].
   Future<void> login(String email, String password) async {
@@ -84,6 +105,7 @@ class AuthNotifier extends Notifier<AuthState> {
         accessToken: pair.accessToken,
         refreshToken: pair.refreshToken,
       );
+      await tokenStore.writeEmail(email);
       state = AuthLoggedIn(email: email);
     } on DioException catch (e) {
       state = AuthError(message: _messageFromDio(e));

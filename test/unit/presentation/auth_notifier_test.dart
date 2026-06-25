@@ -57,14 +57,117 @@ void main() {
     mockDataSource = MockAuthRemoteDataSource();
     mockTokenStore = MockSecureTokenStore();
 
-    // Default: writeTokens and clear are no-ops
+    // Default: writeTokens, writeEmail, and clear are no-ops
     when(
       () => mockTokenStore.writeTokens(
         accessToken: any(named: 'accessToken'),
         refreshToken: any(named: 'refreshToken'),
       ),
     ).thenAnswer((_) async {});
+    when(
+      () => mockTokenStore.writeEmail(any()),
+    ).thenAnswer((_) async {});
     when(() => mockTokenStore.clear()).thenAnswer((_) async {});
+  });
+
+  group('AuthNotifier.restoreSession', () {
+    test('restores to AuthLoggedIn when access token and email are both present',
+        () async {
+      when(() => mockTokenStore.readAccessToken())
+          .thenAnswer((_) async => 'some-access-token');
+      when(() => mockTokenStore.readEmail())
+          .thenAnswer((_) async => 'restored@test.com');
+
+      final container = buildContainer(
+        dataSource: mockDataSource,
+        tokenStore: mockTokenStore,
+      );
+      addTearDown(container.dispose);
+
+      await container.read(authNotifierProvider.notifier).restoreSession();
+
+      final state = container.read(authNotifierProvider);
+      expect(state, isA<AuthLoggedIn>());
+      expect((state as AuthLoggedIn).email, equals('restored@test.com'));
+    });
+
+    test('stays AuthLoggedOut when no access token is stored', () async {
+      when(() => mockTokenStore.readAccessToken())
+          .thenAnswer((_) async => null);
+      when(() => mockTokenStore.readEmail())
+          .thenAnswer((_) async => 'restored@test.com');
+
+      final container = buildContainer(
+        dataSource: mockDataSource,
+        tokenStore: mockTokenStore,
+      );
+      addTearDown(container.dispose);
+
+      await container.read(authNotifierProvider.notifier).restoreSession();
+
+      expect(container.read(authNotifierProvider), isA<AuthLoggedOut>());
+    });
+
+    test('stays AuthLoggedOut when token is present but email is absent',
+        () async {
+      when(() => mockTokenStore.readAccessToken())
+          .thenAnswer((_) async => 'some-access-token');
+      when(() => mockTokenStore.readEmail()).thenAnswer((_) async => null);
+
+      final container = buildContainer(
+        dataSource: mockDataSource,
+        tokenStore: mockTokenStore,
+      );
+      addTearDown(container.dispose);
+
+      await container.read(authNotifierProvider.notifier).restoreSession();
+
+      expect(container.read(authNotifierProvider), isA<AuthLoggedOut>());
+    });
+
+    test('never throws even when token store throws unexpectedly', () async {
+      when(() => mockTokenStore.readAccessToken())
+          .thenThrow(Exception('storage error'));
+      when(() => mockTokenStore.readEmail())
+          .thenAnswer((_) async => 'user@test.com');
+
+      final container = buildContainer(
+        dataSource: mockDataSource,
+        tokenStore: mockTokenStore,
+      );
+      addTearDown(container.dispose);
+
+      // Must not throw; best-effort restore
+      await expectLater(
+        container.read(authNotifierProvider.notifier).restoreSession(),
+        completes,
+      );
+      expect(container.read(authNotifierProvider), isA<AuthLoggedOut>());
+    });
+  });
+
+  group('AuthNotifier.login — persists email', () {
+    test('login success calls writeEmail with the logged-in email', () async {
+      when(() => mockDataSource.login('user@test.com', 'password123'))
+          .thenAnswer(
+        (_) async => const TokenPair(
+          accessToken: 'access-abc',
+          refreshToken: 'refresh-xyz',
+        ),
+      );
+
+      final container = buildContainer(
+        dataSource: mockDataSource,
+        tokenStore: mockTokenStore,
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('user@test.com', 'password123');
+
+      verify(() => mockTokenStore.writeEmail('user@test.com')).called(1);
+    });
   });
 
   group('AuthNotifier — initial state', () {

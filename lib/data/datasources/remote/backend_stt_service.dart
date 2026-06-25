@@ -43,7 +43,13 @@ abstract interface class SecureTokenStore {
     required String refreshToken,
   });
 
-  /// Removes both access and refresh tokens from secure storage.
+  /// Persists the user [email] to secure storage for session restore.
+  Future<void> writeEmail(String email);
+
+  /// Returns the stored user email, or null if none is present.
+  Future<String?> readEmail();
+
+  /// Removes all stored credentials (tokens + email) from secure storage.
   Future<void> clear();
 }
 
@@ -55,6 +61,9 @@ class FlutterSecureTokenStore implements SecureTokenStore {
 
   static const _kAccessTokenKey = 'access_token';
   static const _kRefreshTokenKey = 'refresh_token';
+  // @MX:NOTE: [AUTO] Email key for session restore — written on login, cleared
+  // on logout via clear(). Read by AuthNotifier.restoreSession() at startup.
+  static const _kEmailKey = 'user_email';
 
   final FlutterSecureStorage _storage;
 
@@ -74,9 +83,17 @@ class FlutterSecureTokenStore implements SecureTokenStore {
   }
 
   @override
+  Future<void> writeEmail(String email) =>
+      _storage.write(key: _kEmailKey, value: email);
+
+  @override
+  Future<String?> readEmail() => _storage.read(key: _kEmailKey);
+
+  @override
   Future<void> clear() async {
     await _storage.delete(key: _kAccessTokenKey);
     await _storage.delete(key: _kRefreshTokenKey);
+    await _storage.delete(key: _kEmailKey);
   }
 }
 

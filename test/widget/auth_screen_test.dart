@@ -45,6 +45,9 @@ class FakeAuthNotifier extends Notifier<AuthState> implements AuthNotifier {
   }
 
   @override
+  Future<void> restoreSession() async {}
+
+  @override
   Future<void> logout() async {}
 }
 

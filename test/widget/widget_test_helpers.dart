@@ -38,6 +38,12 @@ class FakeSecureTokenStore implements SecureTokenStore {
   }) async {}
 
   @override
+  Future<void> writeEmail(String email) async {}
+
+  @override
+  Future<String?> readEmail() async => null;
+
+  @override
   Future<void> clear() async {}
 }
 
