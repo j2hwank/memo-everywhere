@@ -1,8 +1,8 @@
 ---
 spec_id: SPEC-WEB-MARKDOWN-001
-title: "Flutter Web 지원 + 마크다운 렌더링 미리보기"
+title: "Flutter Web 지원 (마크다운 렌더링 철회)"
 status: implemented
-version: 1.0.1
+version: 1.0.2
 created: 2026-06-25
 updated: 2026-06-25
 author: manager-spec
@@ -15,6 +15,7 @@ dependencies: [SPEC-MEMO-001, SPEC-BACKEND-001]
 
 ## HISTORY
 
+- v1.0.2 — 2026-06-25 — 마크다운 렌더링 부분 철회(읽기 모드 미리보기 제거, 순수 텍스트 편집 복원). Flutter Web 지원은 유지. 사유: 옵시디안 스타일 인라인 실시간 렌더링 목표였으나 Flutter 구현 경로 부재로 범위 제외.
 - v1.0.1 — 2026-06-25 — implementation complete, all ACs pass
 - v1.0.0 — 2026-06-25 — initial draft
 

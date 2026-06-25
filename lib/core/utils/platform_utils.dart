@@ -22,10 +22,6 @@ class PlatformUtils {
   /// REQ-WM-007: kIsWeb runtime check.
   static bool get isWeb => kIsWeb;
 
-  // @MX:WARN: [AUTO] Raw HTML is disabled in MarkdownBody to prevent injection.
-  // @MX:REASON: flutter_markdown renders user-supplied content; enabling htmlBlockSyntax
-  //             would allow script injection via memo content (REQ security constraint).
-
   /// Returns true when remote (FastAPI) backend should be used for memo storage.
   /// On web, Hive local storage is replaced by backend datasource (REQ-WM-009).
   static bool get useRemoteStore => kIsWeb;

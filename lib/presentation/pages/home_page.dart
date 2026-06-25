@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/router/app_router.dart';
 import '../../domain/entities/memo.dart';
 import '../state/memo_provider.dart';
 import '../widgets/memo_card.dart';
@@ -106,9 +107,23 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/memo/new'),
-        child: const Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'fab_voice',
+            onPressed: () => context.push(AppRoutes.voice),
+            tooltip: '음성 메모',
+            child: const Icon(Icons.mic),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'fab_new',
+            onPressed: () => context.push(AppRoutes.newMemo),
+            tooltip: '새 메모',
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
       body: memosAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

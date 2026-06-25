@@ -53,7 +53,7 @@ memo-everywhere/
 │   ├── presentation/             # 프레젠테이션 계층 (UI)
 │   │   ├── pages/                # 완전한 화면 (페이지)
 │   │   │   ├── home_page.dart
-│   │   │   ├── memo_detail_page.dart    # 마크다운 렌더링 + 편집
+│   │   │   ├── memo_editor_page.dart    # 순수 텍스트 작성/편집
 │   │   │   ├── search_page.dart
 │   │   │   ├── voice_record_page.dart   # 음성 녹음 UI
 │   │   │   └── settings_page.dart

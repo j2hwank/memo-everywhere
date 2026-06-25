@@ -35,16 +35,18 @@ Format: [SPEC-ID] — Date — Description
   - `voice_provider.dart`: 상태 관리
 - **테스트**: flutter test 109/109 통과
 
-### Added (SPEC-WEB-MARKDOWN-001: Flutter Web + 마크다운 렌더링)
+### Added (SPEC-WEB-MARKDOWN-001: Flutter Web 지원)
 
 - **Flutter Web 플랫폼**: `web/` 디렉토리, `flutter build web` 완성
   - 반응형 레이아웃 (모바일/태블릿/데스크톱)
   - `platform_utils.dart`: 플랫폼 감지 유틸리티
-- **마크다운 미리보기**: `flutter_markdown` 패키지
-  - 읽기 전용 모드에서 마크다운 렌더링 (편집은 순수 텍스트 유지)
-  - `memo_detail_page.dart`: 상세 화면
-  - `/memo/:id` 라우트 추가
-- **테스트**: flutter test 117/117 통과, flutter build web 성공
+
+### Reverted
+
+- **마크다운 렌더링 철회**: 읽기 모드 마크다운 미리보기(`flutter_markdown`, `memo_detail_page.dart`)를
+  제거하고 순수 텍스트 편집 방식으로 복원. 메모 탭 시 일반 텍스트 편집기로 직접 진입.
+  - 사유: 옵시디안 스타일 인라인 실시간 렌더링이 목표였으나 Flutter에 적합한 구현 경로가 없어 범위에서 제외
+- **테스트**: flutter test 112/112 통과
 
 ---
 

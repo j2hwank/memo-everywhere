@@ -38,7 +38,7 @@ final memoRepositoryProvider = AutoDisposeProvider<MemoRepository>.internal(
 );
 
 typedef MemoRepositoryRef = AutoDisposeProviderRef<MemoRepository>;
-String _$filteredMemosHash() => r'c8d5ec9fc0951abfd7b830e1ce2ce67c3f442d2a';
+String _$filteredMemosHash() => r'002d3df5e53fc254b65b31a81493cfa3094e5e92';
 
 /// Combines [memosProvider] with [searchQueryProvider] to produce a filtered list.
 /// Passes loading/error states through unchanged.

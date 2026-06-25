@@ -63,7 +63,10 @@ void main() {
       await tester.pumpWidget(buildHomePage([]));
       await tester.pump();
 
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      // Two FABs: voice memo (mic) and new memo (add).
+      expect(find.byType(FloatingActionButton), findsNWidgets(2));
+      expect(find.byIcon(Icons.add), findsOneWidget);
+      expect(find.byIcon(Icons.mic), findsOneWidget);
     });
   });
 
@@ -85,7 +88,9 @@ void main() {
       await tester.pumpWidget(buildHomePage(memos));
       await tester.pump();
 
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      // Two FABs: voice memo (mic) and new memo (add).
+      expect(find.byType(FloatingActionButton), findsNWidgets(2));
+      expect(find.byIcon(Icons.add), findsOneWidget);
     });
 
     testWidgets('does not show empty state when memos exist', (tester) async {
