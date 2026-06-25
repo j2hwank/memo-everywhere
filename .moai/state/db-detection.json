@@ -1,7 +1,0 @@
-{
-  "detected": true,
-  "matched_keywords": ["postgresql", "mongodb", "firebase", "supabase"],
-  "source_files": [".moai/project/tech.md"],
-  "scanned_at": "2026-06-25T00:00:00Z",
-  "tech_md_hash": "memo-everywhere-tech-v1"
-}

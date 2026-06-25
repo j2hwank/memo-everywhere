@@ -38,3 +38,12 @@ macos/Flutter/GeneratedPluginRegistrant.swift
 # OS
 .DS_Store
 Thumbs.db
+
+# MoAI / Claude session artifacts (auto-generated, transient)
+.moai/logs/
+.moai/reports/
+.moai/state/
+.claude/agent-memory/
+
+# Xcode Swift Package Manager cache
+**/xcshareddata/swiftpm/
