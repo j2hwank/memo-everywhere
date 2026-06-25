@@ -7,7 +7,7 @@ part of 'memo_provider.dart';
 // **************************************************************************
 
 String _$memoLocalDataSourceHash() =>
-    r'memo_local_data_source_hash_placeholder';
+    r'20a3cce2b760c844014e88ff522840581901f126';
 
 /// See also [memoLocalDataSource].
 @ProviderFor(memoLocalDataSource)
@@ -22,15 +22,12 @@ final memoLocalDataSourceProvider =
   allTransitiveDependencies: null,
 );
 
-typedef MemoLocalDataSourceRef
-    = AutoDisposeProviderRef<MemoLocalDataSource>;
-
-String _$memoRepositoryHash() => r'memo_repository_hash_placeholder';
+typedef MemoLocalDataSourceRef = AutoDisposeProviderRef<MemoLocalDataSource>;
+String _$memoRepositoryHash() => r'8976e873fed767122f84b51b8b1f061c8ff9f314';
 
 /// See also [memoRepository].
 @ProviderFor(memoRepository)
-final memoRepositoryProvider =
-    AutoDisposeProvider<MemoRepository>.internal(
+final memoRepositoryProvider = AutoDisposeProvider<MemoRepository>.internal(
   memoRepository,
   name: r'memoRepositoryProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -41,10 +38,11 @@ final memoRepositoryProvider =
 );
 
 typedef MemoRepositoryRef = AutoDisposeProviderRef<MemoRepository>;
+String _$memosHash() => r'70de1357f43cbe524685bf63660d05424649426b';
 
-String _$memosHash() => r'memos_hash_placeholder';
-
-/// See also [Memos].
+/// Async notifier that loads and holds the memos list (updatedAt DESC).
+///
+/// Copied from [Memos].
 @ProviderFor(Memos)
 final memosProvider =
     AutoDisposeAsyncNotifierProvider<Memos, List<Memo>>.internal(
@@ -57,20 +55,23 @@ final memosProvider =
 );
 
 typedef _$Memos = AutoDisposeAsyncNotifier<List<Memo>>;
+String _$memoNotifierHash() => r'fbdfbb5e5346b65b40e85be815f3d692f2f73df3';
 
-String _$memoNotifierHash() => r'memo_notifier_hash_placeholder';
-
-/// See also [MemoNotifier].
+/// Notifier that exposes CRUD actions; each action invalidates [memosProvider]
+/// so the list rebuilds automatically.
+///
+/// Copied from [MemoNotifier].
 @ProviderFor(MemoNotifier)
 final memoNotifierProvider =
     AutoDisposeNotifierProvider<MemoNotifier, void>.internal(
   MemoNotifier.new,
   name: r'memoNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$memoNotifierHash,
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$memoNotifierHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 typedef _$MemoNotifier = AutoDisposeNotifier<void>;
+// ignore_for_file: type=lint
+// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
