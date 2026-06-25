@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../presentation/pages/auth_screen.dart';
 import '../../presentation/pages/home_page.dart';
 import '../../presentation/pages/memo_editor_page.dart';
 import '../../presentation/pages/voice_record_page.dart';
@@ -15,6 +16,9 @@ abstract class AppRoutes {
   static const String home = '/';
   static const String newMemo = '/memo/new';
   static const String voice = '/voice';
+
+  /// Optional login / account screen.
+  static const String account = '/account';
 
   /// Returns the edit route for [id] (plain-text editor).
   static String editMemo(String id) => '/memo/$id';
@@ -57,6 +61,10 @@ GoRouter router(RouterRef ref) {
       GoRoute(
         path: AppRoutes.voice,
         builder: (_, __) => const VoiceRecordPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.account,
+        builder: (_, __) => const AuthScreen(),
       ),
     ],
   );

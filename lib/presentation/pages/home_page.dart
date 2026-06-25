@@ -4,8 +4,66 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
 import '../../domain/entities/memo.dart';
+import '../state/auth_provider.dart';
 import '../state/memo_provider.dart';
 import '../widgets/memo_card.dart';
+
+// ---------------------------------------------------------------------------
+// Account icon button (AppBar action)
+// ---------------------------------------------------------------------------
+
+/// Displays person_outline (logged out) or person (logged in) in the AppBar.
+///
+/// Logged out → navigates to /account (AuthScreen).
+/// Logged in → shows a dialog with email + logout action.
+// @MX:NOTE: [AUTO] _AccountIconButton reads authNotifierProvider to switch
+// icons and trigger logout — keep this widget stateless.
+class _AccountIconButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authNotifierProvider);
+    final isLoggedIn = authState is AuthLoggedIn;
+
+    return IconButton(
+      icon: Icon(isLoggedIn ? Icons.person : Icons.person_outline),
+      tooltip: isLoggedIn ? '계정' : '로그인',
+      onPressed: () {
+        if (isLoggedIn) {
+          _showAccountDialog(context, ref, authState.email);
+        } else {
+          context.push(AppRoutes.account);
+        }
+      },
+    );
+  }
+
+  void _showAccountDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String email,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('계정'),
+        content: Text(email),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('닫기'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await ref.read(authNotifierProvider.notifier).logout();
+            },
+            child: const Text('로그아웃'),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Main screen: lists all memos (updatedAt DESC) with a FAB to create new ones.
 ///
@@ -100,11 +158,13 @@ class _HomePageState extends ConsumerState<HomePage> {
               icon: const Icon(Icons.close),
               onPressed: _stopSearch,
             )
-          else
+          else ...[
             IconButton(
               icon: const Icon(Icons.search),
               onPressed: _startSearch,
             ),
+            _AccountIconButton(),
+          ],
         ],
       ),
       floatingActionButton: Column(

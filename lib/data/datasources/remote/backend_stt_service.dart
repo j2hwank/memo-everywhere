@@ -25,14 +25,26 @@ class AuthTokenMissingException implements Exception {
 // SecureTokenStore — abstraction over flutter_secure_storage (testable)
 // ---------------------------------------------------------------------------
 
-/// Abstraction for reading the JWT access token from secure storage.
+/// Abstraction for reading and writing JWT tokens in secure storage.
 ///
-// @MX:ANCHOR: [AUTO] SecureTokenStore.readAccessToken — auth boundary
-// @MX:REASON: BackendSttServiceImpl and future network interceptors both
-// depend on this method for JWT retrieval; fan_in >= 3 expected.
+// @MX:ANCHOR: [AUTO] SecureTokenStore — auth token boundary
+// @MX:REASON: BackendSttServiceImpl, AuthNotifier, and the Dio interceptor
+// all depend on this interface for JWT access; fan_in >= 3.
 abstract interface class SecureTokenStore {
   /// Returns the stored access token, or null if none is present.
   Future<String?> readAccessToken();
+
+  /// Returns the stored refresh token, or null if none is present.
+  Future<String?> readRefreshToken();
+
+  /// Persists both [accessToken] and [refreshToken] to secure storage.
+  Future<void> writeTokens({
+    required String accessToken,
+    required String refreshToken,
+  });
+
+  /// Removes both access and refresh tokens from secure storage.
+  Future<void> clear();
 }
 
 /// Production implementation backed by [FlutterSecureStorage].
@@ -42,11 +54,30 @@ class FlutterSecureTokenStore implements SecureTokenStore {
   }) : _storage = storage ?? const FlutterSecureStorage();
 
   static const _kAccessTokenKey = 'access_token';
+  static const _kRefreshTokenKey = 'refresh_token';
 
   final FlutterSecureStorage _storage;
 
   @override
   Future<String?> readAccessToken() => _storage.read(key: _kAccessTokenKey);
+
+  @override
+  Future<String?> readRefreshToken() => _storage.read(key: _kRefreshTokenKey);
+
+  @override
+  Future<void> writeTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    await _storage.write(key: _kAccessTokenKey, value: accessToken);
+    await _storage.write(key: _kRefreshTokenKey, value: refreshToken);
+  }
+
+  @override
+  Future<void> clear() async {
+    await _storage.delete(key: _kAccessTokenKey);
+    await _storage.delete(key: _kRefreshTokenKey);
+  }
 }
 
 // ---------------------------------------------------------------------------
