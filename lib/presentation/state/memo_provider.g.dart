@@ -38,6 +38,25 @@ final memoRepositoryProvider = AutoDisposeProvider<MemoRepository>.internal(
 );
 
 typedef MemoRepositoryRef = AutoDisposeProviderRef<MemoRepository>;
+String _$filteredMemosHash() => r'c8d5ec9fc0951abfd7b830e1ce2ce67c3f442d2a';
+
+/// Combines [memosProvider] with [searchQueryProvider] to produce a filtered list.
+/// Passes loading/error states through unchanged.
+///
+/// Copied from [filteredMemos].
+@ProviderFor(filteredMemos)
+final filteredMemosProvider =
+    AutoDisposeProvider<AsyncValue<List<Memo>>>.internal(
+  filteredMemos,
+  name: r'filteredMemosProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$filteredMemosHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef FilteredMemosRef = AutoDisposeProviderRef<AsyncValue<List<Memo>>>;
 String _$memosHash() => r'70de1357f43cbe524685bf63660d05424649426b';
 
 /// Async notifier that loads and holds the memos list (updatedAt DESC).

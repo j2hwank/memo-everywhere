@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/datasources/local/memo_local_datasource.dart';
 import '../../data/repositories/memo_repository_impl.dart';
@@ -6,6 +7,7 @@ import '../../domain/repositories/memo_repository.dart';
 import '../../domain/usecases/create_memo.dart';
 import '../../domain/usecases/delete_memo.dart';
 import '../../domain/usecases/get_memos.dart';
+import '../../domain/usecases/search_memos.dart';
 import '../../domain/usecases/update_memo.dart';
 
 part 'memo_provider.g.dart';
@@ -65,4 +67,16 @@ class MemoNotifier extends _$MemoNotifier {
     await DeleteMemo(repo)(id);
     ref.invalidate(memosProvider);
   }
+}
+
+/// Holds the current search query. Empty string = no filter.
+final searchQueryProvider = StateProvider<String>((ref) => '');
+
+/// Combines [memosProvider] with [searchQueryProvider] to produce a filtered list.
+/// Passes loading/error states through unchanged.
+@riverpod
+AsyncValue<List<Memo>> filteredMemos(FilteredMemosRef ref) {
+  final query = ref.watch(searchQueryProvider);
+  final memosAsync = ref.watch(memosProvider);
+  return memosAsync.whenData((memos) => const SearchMemos()(query, memos));
 }

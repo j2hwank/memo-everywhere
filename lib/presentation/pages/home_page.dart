@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,8 +12,42 @@ import '../widgets/memo_card.dart';
 /// REQ-MEMO-004: displays all memos updatedAt DESC.
 /// REQ-MEMO-005: shows empty state message when no memos exist.
 /// REQ-MEMO-008: long-press → confirm dialog → delete.
-class HomePage extends ConsumerWidget {
+/// REQ-SEARCH-001: AppBar search bar filters memos by title/content.
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
+
+  @override
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    // @MX:NOTE: [AUTO] 300ms debounce prevents filteredMemosProvider rebuild on every keystroke.
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      ref.read(searchQueryProvider.notifier).state = query;
+    });
+  }
+
+  void _startSearch() => setState(() => _isSearching = true);
+
+  void _stopSearch() {
+    _debounce?.cancel();
+    _searchController.clear();
+    ref.read(searchQueryProvider.notifier).state = '';
+    setState(() => _isSearching = false);
+  }
 
   Future<void> _confirmDelete(
     BuildContext context,
@@ -42,11 +77,35 @@ class HomePage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final memosAsync = ref.watch(memosProvider);
+  Widget build(BuildContext context) {
+    final memosAsync = ref.watch(filteredMemosProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Memo Everywhere')),
+      appBar: AppBar(
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: '검색...',
+                  border: InputBorder.none,
+                ),
+                onChanged: _onSearchChanged,
+              )
+            : const Text('메모'),
+        actions: [
+          if (_isSearching)
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _stopSearch,
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: _startSearch,
+            ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/memo/new'),
         child: const Icon(Icons.add),
@@ -56,8 +115,11 @@ class HomePage extends ConsumerWidget {
         error: (e, _) => Center(child: Text('오류: $e')),
         data: (memos) {
           if (memos.isEmpty) {
-            return const Center(
-              child: Text('메모가 없습니다'),
+            final query = ref.read(searchQueryProvider);
+            return Center(
+              child: Text(
+                query.trim().isNotEmpty ? '검색 결과가 없습니다' : '메모가 없습니다',
+              ),
             );
           }
           return ListView.builder(
