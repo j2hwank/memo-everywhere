@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:memo_everywhere/core/network/token_refresh_interceptor.dart';
 import 'package:memo_everywhere/data/datasources/remote/backend_stt_service.dart';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +58,12 @@ class _AuthInterceptor extends Interceptor {
 // ---------------------------------------------------------------------------
 
 /// Creates a [Dio] instance configured for the memo-everywhere backend.
+///
+/// The returned client has two interceptors applied in order:
+/// 1. [_AuthInterceptor] — attaches `Authorization: Bearer <token>` on every
+///    outgoing request (when a header is not already present).
+/// 2. [TokenRefreshInterceptor] — on HTTP 401, transparently refreshes the
+///    access token via a bare Dio (no interceptors) and retries once.
 Dio createDio({required SecureTokenStore tokenStore}) {
   final dio = Dio(
     BaseOptions(
@@ -65,7 +72,35 @@ Dio createDio({required SecureTokenStore tokenStore}) {
       receiveTimeout: const Duration(seconds: 30),
     ),
   );
+
+  // Bare Dio used exclusively for the /auth/refresh call so it does NOT
+  // recurse through the TokenRefreshInterceptor on the main client.
+  // @MX:NOTE: [AUTO] _refreshDio is intentionally interceptor-free to prevent
+  // recursive 401-refresh loops when the refresh endpoint itself fails.
+  final refreshDio = Dio(
+    BaseOptions(
+      baseUrl: _kBaseUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+    ),
+  );
+
   dio.interceptors.add(_AuthInterceptor(tokenStore: tokenStore));
+  dio.interceptors.add(
+    TokenRefreshInterceptor(
+      tokenStore: tokenStore,
+      doRefresh: (refreshToken) async {
+        final response = await refreshDio.post<dynamic>(
+          '/auth/refresh',
+          data: <String, dynamic>{'refresh_token': refreshToken},
+        );
+        final data = response.data as Map<String, dynamic>;
+        return data['access_token'] as String;
+      },
+      retryCaller: dio.fetch,
+    ),
+  );
+
   return dio;
 }
 

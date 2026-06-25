@@ -28,8 +28,9 @@ class AuthTokenMissingException implements Exception {
 /// Abstraction for reading and writing JWT tokens in secure storage.
 ///
 // @MX:ANCHOR: [AUTO] SecureTokenStore — auth token boundary
-// @MX:REASON: BackendSttServiceImpl, AuthNotifier, and the Dio interceptor
-// all depend on this interface for JWT access; fan_in >= 3.
+// @MX:REASON: BackendSttServiceImpl, AuthNotifier, TokenRefreshInterceptor,
+// and the Dio interceptor all depend on this interface for JWT access;
+// fan_in >= 3.
 abstract interface class SecureTokenStore {
   /// Returns the stored access token, or null if none is present.
   Future<String?> readAccessToken();
@@ -42,6 +43,12 @@ abstract interface class SecureTokenStore {
     required String accessToken,
     required String refreshToken,
   });
+
+  /// Persists only the [accessToken], leaving the refresh token unchanged.
+  ///
+  /// Used by [TokenRefreshInterceptor] after a silent refresh so that the
+  /// long-lived refresh token is never unnecessarily overwritten.
+  Future<void> writeAccessToken(String accessToken);
 
   /// Persists the user [email] to secure storage for session restore.
   Future<void> writeEmail(String email);
@@ -81,6 +88,10 @@ class FlutterSecureTokenStore implements SecureTokenStore {
     await _storage.write(key: _kAccessTokenKey, value: accessToken);
     await _storage.write(key: _kRefreshTokenKey, value: refreshToken);
   }
+
+  @override
+  Future<void> writeAccessToken(String accessToken) =>
+      _storage.write(key: _kAccessTokenKey, value: accessToken);
 
   @override
   Future<void> writeEmail(String email) =>
