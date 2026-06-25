@@ -26,7 +26,10 @@ memo-everywhere/
 │   ├── data/                     # 데이터 계층 (API, 로컬 DB, 모델)
 │   │   ├── datasources/          # 데이터 소스
 │   │   │   ├── local/            # Hive/Isar 로컬 데이터베이스
+│   │   │   │   └── audio_local_datasource.dart  # 오디오 파일 관리
 │   │   │   ├── remote/           # REST API 클라이언트
+│   │   │   │   ├── auth_remote_datasource.dart  # JWT 로그인/회원가입
+│   │   │   │   └── memo_remote_datasource.dart  # 메모 CRUD API
 │   │   │   └── cache/            # 캐시 관리
 │   │   ├── models/               # JSON 직렬화 모델
 │   │   │   ├── memo_model.dart
@@ -50,22 +53,33 @@ memo-everywhere/
 │   ├── presentation/             # 프레젠테이션 계층 (UI)
 │   │   ├── pages/                # 완전한 화면 (페이지)
 │   │   │   ├── home_page.dart
-│   │   │   ├── memo_detail_page.dart
+│   │   │   ├── memo_detail_page.dart    # 마크다운 렌더링 + 편집
 │   │   │   ├── search_page.dart
-│   │   │   ├── voice_record_page.dart
+│   │   │   ├── voice_record_page.dart   # 음성 녹음 UI
 │   │   │   └── settings_page.dart
 │   │   ├── widgets/              # 재사용 가능한 위젯
 │   │   │   ├── memo_card.dart
 │   │   │   ├── tag_chip.dart
-│   │   │   ├── voice_recorder.dart
+│   │   │   ├── voice_recorder.dart      # 녹음/정지/재생 버튼
 │   │   │   └── search_bar.dart
 │   │   ├── state/                # 상태 관리 (Riverpod)
 │   │   │   ├── memo_provider.dart
 │   │   │   ├── tag_provider.dart
 │   │   │   ├── search_provider.dart
-│   │   │   └── voice_provider.dart
+│   │   │   ├── voice_provider.dart      # 음성 녹음 상태
+│   │   │   └── auth_provider.dart       # JWT 토큰 관리
 │   │   └── bloc/                 # BLoC 상태 관리 (선택적)
 │   │       └── memo_bloc/
+│   ├── core/                     # 핵심 기능 (유틸리티, 상수, 헬퍼)
+│   │   ├── constants/
+│   │   ├── extensions/
+│   │   ├── utils/
+│   │   │   └── platform_utils.dart    # 플랫폼 감지 (Web/Mobile/Desktop)
+│   │   ├── services/
+│   │   │   └── sync_service.dart      # 자동 동기화 서비스
+│   │   ├── theme/                # 테마 및 스타일
+│   │   └── router/
+│   │       └── app_router.dart       # go_router 설정 + /memo/:id 라우트
 │   └── shared/                   # 공유 리소스
 │       ├── config/               # 앱 설정 (API 기본 URL, 환경)
 │       └── services/             # 공유 서비스 (로깅, 분석)
@@ -90,38 +104,40 @@ memo-everywhere/
 
 ---
 
-## 백엔드 서버 구조 (별도 디렉토리)
+## 백엔드 서버 구조
 
 ```
-memo-everywhere-backend/         # FastAPI 백엔드 서버
+backend/                          # FastAPI 백엔드 서버
 ├── app/
 │   ├── main.py                   # FastAPI 진입점
-│   ├── core/                     # 핵심 설정
+│   ├── core/
 │   │   ├── config.py             # 환경 설정
-│   │   └── security.py           # 인증/권한 로직
+│   │   ├── auth.py               # JWT 인증 로직
+│   │   └── db.py                 # 데이터베이스 연결
 │   ├── api/
-│   │   ├── v1/
-│   │   │   ├── endpoints/
-│   │   │   │   ├── memos.py      # 메모 CRUD 엔드포인트
-│   │   │   │   ├── tags.py       # 태그 엔드포인트
-│   │   │   │   ├── auth.py       # 인증 엔드포인트
-│   │   │   │   └── voice.py      # 음성 처리 (STT)
-│   │   │   └── dependencies.py   # 의존성 주입
+│   │   ├── routes/
+│   │   │   ├── auth.py           # 인증 엔드포인트 (login, register)
+│   │   │   ├── memos.py          # 메모 CRUD 엔드포인트
+│   │   │   └── voice.py          # 음성 처리 (Whisper API 프록시)
 │   ├── models/                   # SQLAlchemy ORM 모델
 │   │   ├── memo.py
-│   │   ├── tag.py
 │   │   └── user.py
-│   ├── schemas/                  # Pydantic 스키마
+│   ├── schemas/                  # Pydantic 스키마 (요청/응답)
 │   │   ├── memo.py
-│   │   └── user.py
+│   │   ├── user.py
+│   │   └── auth.py
 │   └── services/                 # 비즈니스 로직
-│       ├── memo_service.py
-│       ├── stt_service.py        # Whisper API
-│       └── sync_service.py       # 동기화
-├── migrations/                   # Alembic 마이그레이션
+│       ├── auth_service.py       # JWT, bcrypt
+│       ├── memo_service.py       # 메모 CRUD + 동기화 로직
+│       └── voice_service.py      # Whisper API 호출
+├── alembic/                      # 데이터베이스 마이그레이션
+│   ├── versions/                 # 마이그레이션 파일
+│   └── env.py
 ├── tests/
+│   └── test_api.py               # API 엔드포인트 테스트
 ├── requirements.txt              # Python 의존성
-└── .env.example                  # 환경 변수
+├── .env.example                  # 환경 변수 템플릿
+└── alembic.ini                   # Alembic 설정
 ```
 
 ---

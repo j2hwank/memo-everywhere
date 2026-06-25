@@ -297,11 +297,21 @@ GoRouter(
 
 ## 기타 필수 패키지
 
-### 통신 및 API
+### 음성 처리 (Voice & STT) #package/voice
+
+| 패키지 | 목적 | 버전 |
+|--------|------|------|
+| `record` | 오디오 녹음 (플랫폼 네이티브 코덱) | 5.0.0+ |
+| `speech_to_text` | 음성-텍스트 변환 (네이티브 STT) | 6.6.0+ |
+| `flutter_markdown` | 마크다운 렌더링 | 0.7.0+ |
+
+### 네트워크 및 인증 #package/network
 
 | 패키지 | 목적 | 버전 |
 |--------|------|------|
 | `dio` | HTTP 클라이언트 (권장) | 5.3.0+ |
+| `flutter_secure_storage` | 안전한 토큰 저장 (KeyChain/Keystore) | 9.0.0+ |
+| `connectivity_plus` | 네트워크 상태 감지 | 5.0.0+ |
 | `http` | 표준 HTTP 라이브러리 | 1.1.0+ |
 
 ```dart

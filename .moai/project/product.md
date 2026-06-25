@@ -36,7 +36,7 @@ aliases: [제품정의, 기능명세, 제품요구사항]
 
 ### 1. 텍스트 메모 작성 #feature/text
 - 빠른 메모 입력 및 편집 기능
-- 리치 텍스트 미지원 (순수 텍스트만)
+- 순수 텍스트 편집 (읽기 모드에서 마크다운 렌더링 지원)
 - 온라인/오프라인 동작
 
 ### 2. 음성 기록 및 STT #feature/voice
@@ -151,17 +151,17 @@ aliases: [제품정의, 기능명세, 제품요구사항]
 ## 로드맵 (Roadmap)
 
 ### Phase 1: MVP (V1.0)
-- [ ] 텍스트 메모 CRUD
-- [ ] 음성 녹음 + STT
+- [x] 텍스트 메모 CRUD
+- [x] 음성 녹음 + STT
 - [ ] 태그 조직화
-- [ ] 기본 검색
-- [ ] iOS/Android 지원
+- [x] 기본 검색
+- [x] iOS/Android 지원
 
 ### Phase 2: 확장 (V1.1)
-- [ ] macOS/Windows/Linux 지원
-- [ ] Web 지원
+- [ ] macOS/Windows/Linux 지원 (macOS 지원됨, Windows/Linux 부분 지원)
+- [x] Web 지원
 - [ ] 폴더 계층 구조
-- [ ] 클라우드 동기화
+- [x] 클라우드 동기화
 
 ### Phase 3: 고도화 (V2.0)
 - [ ] 폴더 공유 (협업)

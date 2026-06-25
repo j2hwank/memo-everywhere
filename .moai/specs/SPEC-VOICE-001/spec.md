@@ -1,8 +1,8 @@
 ---
 spec_id: SPEC-VOICE-001
 title: "음성 메모 기능 — 녹음 + STT 텍스트 변환"
-status: completed
-version: 1.0.0
+status: implemented
+version: 1.0.1
 created: 2026-06-25
 updated: 2026-06-25
 author: manager-spec
@@ -15,6 +15,7 @@ dependencies: [SPEC-MEMO-001, SPEC-BACKEND-001]
 
 ## HISTORY
 
+- v1.0.1 — 2026-06-25 — implementation complete, all ACs pass
 - v1.0.0 — 2026-06-25 — initial draft
 
 ## 메타데이터

@@ -1,8 +1,8 @@
 ---
 spec_id: SPEC-BACKEND-001
 title: "FastAPI 백엔드 + 크로스디바이스 동기화"
-status: draft
-version: 1.0.0
+status: implemented
+version: 1.0.1
 created: 2026-06-25
 updated: 2026-06-25
 author: manager-spec
@@ -15,6 +15,7 @@ dependencies: [SPEC-MEMO-001]
 
 ## HISTORY
 
+- v1.0.1 — 2026-06-25 — implementation complete, all ACs pass
 - v1.0.0 — 2026-06-25 — initial draft
 
 ## 메타데이터

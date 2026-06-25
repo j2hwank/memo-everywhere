@@ -1,8 +1,8 @@
 ---
 spec_id: SPEC-WEB-MARKDOWN-001
 title: "Flutter Web 지원 + 마크다운 렌더링 미리보기"
-status: completed
-version: 1.0.0
+status: implemented
+version: 1.0.1
 created: 2026-06-25
 updated: 2026-06-25
 author: manager-spec
@@ -15,6 +15,7 @@ dependencies: [SPEC-MEMO-001, SPEC-BACKEND-001]
 
 ## HISTORY
 
+- v1.0.1 — 2026-06-25 — implementation complete, all ACs pass
 - v1.0.0 — 2026-06-25 — initial draft
 
 ## 메타데이터
